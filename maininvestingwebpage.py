@@ -29,6 +29,10 @@ ACTIVE_PORTFOLIO_FILE = "portfolio_data.csv"
 # ---------------- UTILITIES ----------------
 def parse_brokerage_csv(filepath: str) -> pd.DataFrame:
     """Parse the brokerage CSV format and extract stock purchases"""
+    if not os.path.exists(filepath):
+        logger.warning(f"Portfolio file not found: {filepath}")
+        return pd.DataFrame(columns=["symbol", "shares", "price", "date", "trans_type"])
+    
     try:
         # Read CSV and skip bad lines (multiline descriptions still exist)
         df = pd.read_csv(filepath, on_bad_lines='skip')
@@ -65,6 +69,9 @@ def parse_brokerage_csv(filepath: str) -> pd.DataFrame:
 
 def get_all_transactions(filepath: str) -> pd.DataFrame:
     """Get all transactions including non-trade transactions"""
+    if not os.path.exists(filepath):
+        return pd.DataFrame()
+    
     try:
         df = pd.read_csv(filepath, on_bad_lines='skip')
         df['date'] = pd.to_datetime(df['Settle Date'], errors='coerce')
@@ -307,6 +314,55 @@ def get_symbols():
 # ---------------- SERVE HTML ----------------
 @app.get("/")
 def serve_html():
+    # Check if CSV exists, otherwise show upload page
+    if not os.path.exists(ACTIVE_PORTFOLIO_FILE):
+        return HTMLResponse("""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Portfolio Analytics - Upload Required</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }
+                .container {
+                    background: white;
+                    padding: 40px;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    text-align: center;
+                    max-width: 500px;
+                }
+                h1 { color: #333; margin-bottom: 20px; }
+                p { color: #666; line-height: 1.6; margin-bottom: 30px; }
+                a {
+                    display: inline-block;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 12px 30px;
+                    border-radius: 5px;
+                    text-decoration: none;
+                    font-weight: bold;
+                    transition: transform 0.2s;
+                }
+                a:hover { transform: translateY(-2px); }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>📊 Portfolio Analytics</h1>
+                <p>Welcome! No portfolio data has been uploaded yet. Please upload your CSV file to get started with your portfolio analysis.</p>
+                <a href="/upload">Upload Portfolio CSV</a>
+            </div>
+        </body>
+        </html>
+        """)
     return FileResponse("index.html")
 
 # ---------------- MARKET DATA ----------------
