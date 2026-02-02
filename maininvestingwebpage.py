@@ -984,5 +984,6 @@ def lending_summary():
         "symbols_lent": lending['Instrument'].nunique() if 'Instrument' in lending.columns else 0
     }
 
-# Vercel serverless handler
+# Vercel serverless handler - must be named 'handler' or 'app'
+app = app  # Explicit assignment for Vercel
 handler = app
