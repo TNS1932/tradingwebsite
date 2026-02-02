@@ -81,6 +81,14 @@ def parse_brokerage_csv(filepath: str) -> pd.DataFrame:
     # Clean column names (remove extra spaces)
     df.columns = df.columns.str.strip()
     
+    # Map different CSV column name formats to standardized names
+    column_mapping = {
+        'Quantity': 'Shares',
+        'Price': 'Share_Price', 
+        'Amount': 'Traded-Price'
+    }
+    df.rename(columns=column_mapping, inplace=True)
+    
     # Check for required columns
     required_cols = ['Trans Code', 'Instrument', 'Shares', 'Share_Price', 'Settle Date']
     missing_cols = [col for col in required_cols if col not in df.columns]
