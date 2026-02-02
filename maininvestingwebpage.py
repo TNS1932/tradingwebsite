@@ -240,13 +240,23 @@ def upload_page():
                         body: formData
                     });
                     
-                    const data = await response.json();
+                    let data;
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        const text = await response.text();
+                        data = { detail: text || 'Upload failed' };
+                    }
                     
                     if (response.ok) {
                         messageDiv.className = 'message success';
-                        messageDiv.textContent = data.message;
+                        messageDiv.textContent = data.message || 'Upload successful!';
                         messageDiv.style.display = 'block';
                         document.getElementById('uploadForm').reset();
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1500);
                     } else {
                         messageDiv.className = 'message error';
                         messageDiv.textContent = data.detail || 'Upload failed';
@@ -266,11 +276,11 @@ def upload_page():
 @app.post("/upload")
 async def upload_csv(file: UploadFile = File(...)):
     """Upload portfolio CSV"""
-    # Validate file type
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
-    
     try:
+        # Validate file type
+        if not file.filename.endswith('.csv'):
+            raise HTTPException(status_code=400, detail="Only CSV files are allowed")
+        
         # Save the uploaded file
         content = await file.read()
         with open(ACTIVE_PORTFOLIO_FILE, 'wb') as f:
@@ -286,8 +296,11 @@ async def upload_csv(file: UploadFile = File(...)):
             "transactions": len(test_parse),
             "symbols": len(test_parse['symbol'].unique()) if 'symbol' in test_parse.columns else 0
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error processing CSV: {str(e)}")
+        logger.error(f"Upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
 
 # ---------------- GET ALL SYMBOLS ----------------
 @app.get("/symbols")
