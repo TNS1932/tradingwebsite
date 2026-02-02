@@ -28,6 +28,17 @@ if os.getenv("RENDER") or os.getenv("VERCEL"):
 else:
     ACTIVE_PORTFOLIO_FILE = "portfolio_data.csv"
 
+# ---------------- HEALTH CHECK ----------------
+@app.get("/health")
+def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "csv_file": ACTIVE_PORTFOLIO_FILE,
+        "csv_exists": os.path.exists(ACTIVE_PORTFOLIO_FILE),
+        "platform": "render" if os.getenv("RENDER") else "local"
+    }
+
 # ---------------- UTILITIES ----------------
 def parse_brokerage_csv(filepath: str) -> pd.DataFrame:
     """Parse the brokerage CSV format and extract stock purchases"""
