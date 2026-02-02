@@ -281,17 +281,31 @@ def upload_page():
 async def upload_csv(file: UploadFile = File(...)):
     """Upload portfolio CSV"""
     try:
+        logger.info(f"Starting upload for file: {file.filename}")
+        
         # Validate file type
         if not file.filename.endswith('.csv'):
+            logger.warning(f"Invalid file type: {file.filename}")
             raise HTTPException(status_code=400, detail="Only CSV files are allowed")
         
+        # Ensure directory exists (for /tmp on cloud platforms)
+        os.makedirs(os.path.dirname(ACTIVE_PORTFOLIO_FILE) if os.path.dirname(ACTIVE_PORTFOLIO_FILE) else ".", exist_ok=True)
+        
         # Save the uploaded file
+        logger.info(f"Reading file content...")
         content = await file.read()
+        logger.info(f"File size: {len(content)} bytes")
+        
+        logger.info(f"Writing to: {ACTIVE_PORTFOLIO_FILE}")
         with open(ACTIVE_PORTFOLIO_FILE, 'wb') as f:
             f.write(content)
+        logger.info(f"File written successfully")
         
         # Verify it can be parsed
+        logger.info("Parsing CSV...")
         test_parse = parse_brokerage_csv(ACTIVE_PORTFOLIO_FILE)
+        logger.info(f"Parsed {len(test_parse)} rows")
+        
         if test_parse.empty:
             raise HTTPException(status_code=400, detail="CSV file appears to be empty or invalid")
         
@@ -303,8 +317,8 @@ async def upload_csv(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error processing CSV: {str(e)}")
+        logger.error(f"Upload error: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error: {type(e).__name__}: {str(e)}")
 
 # ---------------- GET ALL SYMBOLS ----------------
 @app.get("/symbols")
