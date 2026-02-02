@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Nate's Portfolio</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h1>Nate's Portfolio</h1>
+
+<select id="symbol">
+  <option value="AAPL">AAPL</option>
+  <option value="MSFT">MSFT</option>
+</select>
+
+<button onclick="loadData()">Load</button>
+
+<h2>Market Trend</h2>
+<canvas id="marketChart"></canvas>
+
+<h2>Your Position</h2>
+<div id="stats"></div>
+<canvas id="personalChart"></canvas>
+
+<script src="app.js"></script>
+</body>
+</html>
