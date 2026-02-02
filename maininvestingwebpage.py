@@ -22,7 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ACTIVE_PORTFOLIO_FILE = "portfolio_data.csv"
+# Use /tmp for file storage on cloud platforms (Render, Vercel, etc.)
+if os.getenv("RENDER") or os.getenv("VERCEL"):
+    ACTIVE_PORTFOLIO_FILE = "/tmp/portfolio_data.csv"
+else:
+    ACTIVE_PORTFOLIO_FILE = "portfolio_data.csv"
 
 # ---------------- UTILITIES ----------------
 def parse_brokerage_csv(filepath: str) -> pd.DataFrame:
