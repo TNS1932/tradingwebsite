@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Advanced Portfolio Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.0.2/dist/chartjs-chart-treemap.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    header {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    h1 {
+      color: #667eea;
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+    
+    .quick-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    
+    .stat-card h3 {
+      font-size: 0.9em;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+    
+    .stat-card .value {
+      font-size: 2em;
+      font-weight: bold;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .tab-button {
+      background: white !important;
+      border: 2px solid #e9ecef;
+      padding: 15px 30px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px !important;
+      font-weight: 600;
+      transition: all 0.3s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      color: #333 !important;
+      display: inline-block;
+      min-width: 120px;
+      text-align: center;
+    }
+    
+    .tab-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+      background: #f8f9fa !important;
+      border-color: #667eea;
+    }
+    
+    .tab-button.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+      color: white !important;
+      border-color: #667eea;
+      opacity: 1;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .panel {
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .panel h2 {
+      color: #667eea;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+    }
+    
+    .controls {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
+      margin: 15px 0;
+    }
+    
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 8px;
+      background: white;
+      border-radius: 5px;
+      transition: background 0.2s;
+    }
+    
+    .checkbox-label:hover {
+      background: #e9ecef;
+    }
+    
+    .checkbox-label input {
+      margin-right: 5px;
+    }
+    
+    button:not(.tab-button) {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    
+    button:not(.tab-button):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    select, input {
+      padding: 10px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    
+    .holdings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .holding-card {
+      border: 2px solid #e9ecef;
+      padding: 15px;
+      border-radius: 10px;
+      background: #f8f9fa;
+    }
+    
+    .holding-card h4 {
+      color: #667eea;
+      font-size: 1.3em;
+      margin-bottom: 10px;
+    }
+    
+    .holding-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+    }
+    
+    .positive { color: #28a745; font-weight: bold; }
+    .negative { color: #dc3545; font-weight: bold; }
+    
+    .chart-container {
+      position: relative;
+      height: 400px;
+      margin-bottom: 30px;
+    }
+    
+    .export-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .sector-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+    }
+    
+    .sector-item {
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+    
+    .performer-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 10px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .date-picker-container {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    th {
+      background: #667eea;
+      color: white;
+      font-weight: 600;
+    }
+    
+    tr:hover {
+      background: #f8f9fa;
+    }
+    
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+    
+    .metric-box {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    
+    .metric-box h4 {
+      color: #6c757d;
+      font-size: 0.9em;
+      margin-bottom: 10px;
+    }
+    
+    .metric-box .value {
+      font-size: 2em;
+      font-weight: bold;
+      color: #667eea;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>📊 Advanced Portfolio Tracker</h1>
+    <div class="quick-stats" id="quickStats">
+      <div class="stat-card">
+        <h3>Total Portfolio Value</h3>
+        <div class="value" id="totalValue">Loading...</div>
+      </div>
+      <div class="stat-card">
+        <h3>Total P&L</h3>
+        <div class="value" id="totalPnL">Loading...</div>
+      </div>
+      <div class="stat-card">
+        <h3>Total ROI</h3>
+        <div class="value" id="totalROI">Loading...</div>
+      </div>
+      <div class="stat-card">
+        <h3>Number of Holdings</h3>
+        <div class="value" id="numHoldings">0</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-button active" onclick="switchTab('overview')">📈 Overview</button>
+    <button class="tab-button" onclick="switchTab('analytics')">🎯 Analytics</button>
+    <button class="tab-button" onclick="switchTab('comparison')">📊 Comparison</button>
+    <button class="tab-button" onclick="switchTab('daterange')">📅 Date Range</button>
+    <button class="tab-button" onclick="switchTab('lending')">💰 Stock Lending</button>
+    <button class="tab-button" onclick="switchTab('nontrade')">💵 Non-Trade</button>
+    <button class="tab-button" onclick="switchTab('export')">💾 Export & Reports</button>
+  </div>
+
+  <!-- OVERVIEW TAB -->
+  <div id="overview" class="tab-content active">
+    <div class="panel">
+      <h2>Portfolio Holdings</h2>
+      <div class="holdings-grid" id="holdingsGrid">Loading...</div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS TAB -->
+  <div id="analytics" class="tab-content">
+    <div class="panel">
+      <h2>Performance Metrics</h2>
+      <div class="metric-grid" id="performanceMetrics">Loading...</div>
+    </div>
+
+    <div class="panel">
+      <h2>Sector Allocation</h2>
+      <div class="chart-container">
+        <canvas id="sectorChart"></canvas>
+      </div>
+      <div class="sector-grid" id="sectorList"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🏆 Best Performers</h2>
+      <div id="bestPerformers"></div>
+    </div>
+
+    <div class="panel">
+      <h2>📉 Worst Performers</h2>
+      <div id="worstPerformers"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Monthly Performance</h2>
+      <select id="yearSelector" onchange="loadMonthlyBreakdown()">
+        <option value="2025" selected>2025</option>
+        <option value="2026">2026</option>
+        <option value="2024">2024</option>
+        <option value="2023">2023</option>
+      </select>
+      <div class="chart-container">
+        <canvas id="monthlyChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARISON TAB -->
+  <div id="comparison" class="tab-content">
+    <div class="panel">
+      <div class="controls">
+        <h3>Select Stocks to Compare</h3>
+        <div class="checkbox-grid" id="symbolCheckboxes">Loading...</div>
+        <div style="margin-top: 15px;">
+          <button onclick="loadComparisonCharts()">Load Charts</button>
+          <select id="rangeSelector">
+            <option value="1m">1 Month</option>
+            <option value="3m">3 Months</option>
+            <option value="1y" selected>1 Year</option>
+            <option value="5y">5 Years</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="comparisonStats"></div>
+
+    <div class="panel">
+      <h2>Combined P&L Over Time</h2>
+      <div class="chart-container">
+        <canvas id="pnlChart"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Stock Price Comparison</h2>
+      <div class="chart-container">
+        <canvas id="priceChart"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Portfolio Value Over Time</h2>
+      <div class="chart-container">
+        <canvas id="valueChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATE RANGE TAB -->
+  <div id="daterange" class="tab-content">
+    <div class="panel">
+      <h2>Custom Date Range Analysis</h2>
+      <div class="date-picker-container">
+        <label>Select Stock: </label>
+        <select id="dateRangeSymbol"></select>
+        <br><br>
+        <label>Start Date: </label>
+        <input type="date" id="startDate" value="2025-01-01">
+        <label>End Date: </label>
+        <input type="date" id="endDate" value="2026-01-31">
+        <button onclick="loadDateRangeData()">Analyze</button>
+      </div>
+      <div class="chart-container">
+        <canvas id="dateRangeChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- STOCK LENDING TAB -->
+  <div id="lending" class="tab-content">
+    <div class="panel">
+      <h2>Stock Lending Income</h2>
+      <div class="stat-card" id="lendingSummary">
+        <h3>Total Lending Income</h3>
+        <div class="value" id="totalLendingIncome">Loading...</div>
+      </div>
+      <div style="margin-top: 20px;">
+        <table class="data-table" id="lendingTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Instrument</th>
+              <th>Description</th>
+              <th>Trans Code</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody id="lendingTableBody">
+            <tr><td colspan="5">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- NON-TRADE TRANSACTIONS TAB -->
+  <div id="nontrade" class="tab-content">
+    <div class="panel">
+      <h2>Non-Trade Transactions</h2>
+      <div id="nonTradeSummary" class="metric-grid">Loading...</div>
+    </div>
+    
+    <div class="panel">
+      <h2>Transaction History</h2>
+      <table class="data-table" id="nonTradeTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Instrument</th>
+            <th>Description</th>
+            <th>Trans Code</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody id="nonTradeTableBody">
+          <tr><td colspan="7">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- EXPORT TAB -->
+  <div id="export" class="tab-content">
+    <div class="panel">
+      <h2>Export Portfolio Data</h2>
+      <div class="export-buttons">
+        <button onclick="exportCSV()">📄 Download CSV</button>
+        <button onclick="downloadChartImage('pnlChart', 'pnl-chart')">📸 Download P&L Chart</button>
+        <button onclick="downloadChartImage('sectorChart', 'sector-chart')">🥧 Download Sector Chart</button>
+        <button onclick="exportSummary()">📊 Full Summary Report</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Portfolio Summary Report</h2>
+      <div id="summaryReport">Click "Full Summary Report" to generate</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API_BASE = 'http://localhost:8000';
+  
+  // Chart instances
+  let charts = {
+    sector: null,
+    pnl: null,
+    price: null,
+    value: null,
+    monthly: null,
+    dateRange: null
+  };
+  
+  const CHART_COLORS = [
+    'rgb(75, 192, 192)', 'rgb(255, 99, 132)', 'rgb(54, 162, 235)',
+    'rgb(255, 205, 86)', 'rgb(153, 102, 255)', 'rgb(255, 159, 64)',
+    'rgb(201, 203, 207)', 'rgb(100, 181, 246)', 'rgb(129, 199, 132)',
+    'rgb(255, 138, 101)', 'rgb(171, 71, 188)', 'rgb(255, 213, 79)'
+  ];
+
+  // Tab switching
+  function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    event.target.classList.add('active');
+    
+    // Load data for specific tabs
+    if (tabName === 'analytics') loadAnalytics();
+    if (tabName === 'daterange') loadDateRangeSymbols();
+    if (tabName === 'lending') loadLendingData();
+    if (tabName === 'nontrade') loadNonTradeData();
+  }
+
+  // Load initial data
+  async function loadOverview() {
+    try {
+      const response = await fetch(`${API_BASE}/analytics/overview`);
+      const data = await response.json();
+      
+      // Update quick stats
+      document.getElementById('totalValue').textContent = '$' + data.total_equity.toLocaleString();
+      document.getElementById('totalPnL').textContent = (data.total_pnl >= 0 ? '+' : '') + '$' + data.total_pnl.toLocaleString();
+      document.getElementById('totalPnL').className = 'value ' + (data.total_pnl >= 0 ? 'positive' : 'negative');
+      document.getElementById('totalROI').textContent = (data.total_roi >= 0 ? '+' : '') + data.total_roi.toFixed(2) + '%';
+      document.getElementById('totalROI').className = 'value ' + (data.total_roi >= 0 ? 'positive' : 'negative');
+      document.getElementById('numHoldings').textContent = data.holdings.length;
+      
+      // Display holdings
+      const grid = document.getElementById('holdingsGrid');
+      grid.innerHTML = data.holdings.map(h => `
+        <div class="holding-card">
+          <h4>${h.symbol}</h4>
+          <div class="holding-stat">
+            <span>Shares:</span>
+            <strong>${h.shares.toFixed(2)}</strong>
+          </div>
+          <div class="holding-stat">
+            <span>Avg Cost:</span>
+            <strong>$${h.avg_cost.toFixed(2)}</strong>
+          </div>
+          <div class="holding-stat">
+            <span>Current:</span>
+            <strong>$${h.current_price.toFixed(2)}</strong>
+          </div>
+          <div class="holding-stat">
+            <span>Equity:</span>
+            <strong>$${h.equity.toLocaleString()}</strong>
+          </div>
+          <div class="holding-stat">
+            <span>P&L:</span>
+            <strong class="${h.pnl >= 0 ? 'positive' : 'negative'}">
+              ${h.pnl >= 0 ? '+' : ''}$${h.pnl.toLocaleString()}
+            </strong>
+          </div>
+          <div class="holding-stat">
+            <span>ROI:</span>
+            <strong class="${h.roi >= 0 ? 'positive' : 'negative'}">
+              ${h.roi >= 0 ? '+' : ''}${h.roi.toFixed(2)}%
+            </strong>
+          </div>
+          <div class="holding-stat">
+            <span>Allocation:</span>
+            <strong>${h.allocation.toFixed(2)}%</strong>
+          </div>
+          <div class="holding-stat">
+            <span>Sector:</span>
+            <em>${h.sector}</em>
+          </div>
+        </div>
+      `).join('');
+      
+    } catch (error) {
+      console.error('Error loading overview:', error);
+    }
+  }
+
+  async function loadAnalytics() {
+    await loadPerformanceMetrics();
+    await loadSectorAllocation();
+    await loadBestWorstPerformers();
+    await loadMonthlyBreakdown();
+  }
+
+  async function loadPerformanceMetrics() {
+    try {
+      const response = await fetch(`${API_BASE}/analytics/performance`);
+      const data = await response.json();
+      
+      const metricsHTML = `
+        <div class="metric-box">
+          <h4>Annual Return</h4>
+          <div class="value ${data.annual_return >= 0 ? 'positive' : 'negative'}">
+            ${data.annual_return >= 0 ? '+' : ''}${data.annual_return.toFixed(2)}%
+          </div>
+        </div>
+        <div class="metric-box">
+          <h4>Volatility</h4>
+          <div class="value">${data.volatility.toFixed(2)}%</div>
+        </div>
+        <div class="metric-box">
+          <h4>Sharpe Ratio</h4>
+          <div class="value">${data.sharpe_ratio.toFixed(2)}</div>
+        </div>
+        ${data.spy_return ? `
+        <div class="metric-box">
+          <h4>S&P 500 Return</h4>
+          <div class="value">${data.spy_return >= 0 ? '+' : ''}${data.spy_return.toFixed(2)}%</div>
+        </div>
+        <div class="metric-box">
+          <h4>Outperformance</h4>
+          <div class="value ${data.outperformance >= 0 ? 'positive' : 'negative'}">
+            ${data.outperformance >= 0 ? '+' : ''}${data.outperformance.toFixed(2)}%
+          </div>
+        </div>
+        ` : ''}
+        ${data.beta ? `
+        <div class="metric-box">
+          <h4>Beta</h4>
+          <div class="value">${data.beta.toFixed(2)}</div>
+        </div>
+        ` : ''}
+      `;
+      
+      document.getElementById('performanceMetrics').innerHTML = metricsHTML;
+    } catch (error) {
+      console.error('Error loading performance metrics:', error);
+    }
+  }
+
+  async function loadSectorAllocation() {
+    try {
+      const response = await fetch(`${API_BASE}/analytics/sectors`);
+      const data = await response.json();
+      
+      // Display sector list
+      const sectorList = document.getElementById('sectorList');
+      sectorList.innerHTML = data.sectors.map(s => `
+        <div class="sector-item">
+          <h4>${s.sector}</h4>
+          <div><strong>$${s.value.toLocaleString()}</strong></div>
+          <div>${s.percentage.toFixed(1)}%</div>
+        </div>
+      `).join('');
+      
+      // Draw pie chart
+      const ctx = document.getElementById('sectorChart').getContext('2d');
+      if (charts.sector) charts.sector.destroy();
+      
+      charts.sector = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: data.sectors.map(s => s.sector),
+          datasets: [{
+            data: data.sectors.map(s => s.value),
+            backgroundColor: CHART_COLORS
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.parsed || 0;
+                  const percentage = data.sectors[context.dataIndex].percentage;
+                  return `${label}: $${value.toLocaleString()} (${percentage.toFixed(1)}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error loading sector allocation:', error);
+    }
+  }
+
+  async function loadBestWorstPerformers() {
+    try {
+      const response = await fetch(`${API_BASE}/analytics/best_worst`);
+      const data = await response.json();
+      
+      document.getElementById('bestPerformers').innerHTML = data.best.map(p => `
+        <div class="performer-card">
+          <div>
+            <strong>${p.symbol}</strong>
+            <div>$${p.avg_cost.toFixed(2)} → $${p.current_price.toFixed(2)}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="positive" style="font-size: 1.5em;">+${p.roi.toFixed(2)}%</div>
+            <div class="positive">+$${p.pnl.toLocaleString()}</div>
+          </div>
+        </div>
+      `).join('');
+      
+      document.getElementById('worstPerformers').innerHTML = data.worst.map(p => `
+        <div class="performer-card">
+          <div>
+            <strong>${p.symbol}</strong>
+            <div>$${p.avg_cost.toFixed(2)} → $${p.current_price.toFixed(2)}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="negative" style="font-size: 1.5em;">${p.roi.toFixed(2)}%</div>
+            <div class="negative">$${p.pnl.toLocaleString()}</div>
+          </div>
+        </div>
+      `).join('');
+    } catch (error) {
+      console.error('Error loading best/worst performers:', error);
+    }
+  }
+
+  async function loadMonthlyBreakdown() {
+    const yearSelector = document.getElementById('yearSelector');
+    const year = yearSelector ? yearSelector.value : 2025; // Default to 2025 if selector not found
+    try {
+      const response = await fetch(`${API_BASE}/analytics/monthly_breakdown?year=${year}`);
+      const data = await response.json();
+      
+      const ctx = document.getElementById('monthlyChart').getContext('2d');
+      if (charts.monthly) charts.monthly.destroy();
+      
+      charts.monthly = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.months.map(m => m.month_name),
+          datasets: [{
+            label: 'Monthly P&L',
+            data: data.months.map(m => m.pnl),
+            backgroundColor: data.months.map(m => m.pnl >= 0 ? 'rgba(40, 167, 69, 0.7)' : 'rgba(220, 53, 69, 0.7)'),
+            borderColor: data.months.map(m => m.pnl >= 0 ? 'rgb(40, 167, 69)' : 'rgb(220, 53, 69)'),
+            borderWidth: 2,
+            borderRadius: 5,
+            yAxisID: 'y1'
+          }, {
+            label: 'Portfolio Value',
+            data: data.months.map(m => m.value),
+            type: 'line',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgb(75, 192, 192)',
+            borderWidth: 3,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: 'rgb(75, 192, 192)',
+            fill: false,
+            yAxisID: 'y',
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top'
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.dataset.label || '';
+                  const value = context.parsed.y;
+                  return label + ': $' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              type: 'linear',
+              position: 'left',
+              title: {
+                display: true,
+                text: 'Portfolio Value ($)'
+              },
+              ticks: {
+                callback: value => '$' + value.toLocaleString()
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+              }
+            },
+            y1: {
+              type: 'linear',
+              position: 'right',
+              title: {
+                display: true,
+                text: 'P&L ($)'
+              },
+              ticks: {
+                callback: value => '$' + value.toLocaleString()
+              },
+              grid: {
+                drawOnChartArea: false
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error loading monthly breakdown:', error);
+    }
+  }
+
+  // Load symbols for comparison and date range
+  async function loadSymbolsForComparison() {
+    try {
+      const response = await fetch(`${API_BASE}/symbols`);
+      const data = await response.json();
+      
+      const container = document.getElementById('symbolCheckboxes');
+      container.innerHTML = data.symbols.map(s => `
+        <label class="checkbox-label">
+          <input type="checkbox" name="stock" value="${s}">
+          <span>${s}</span>
+        </label>
+      `).join('');
+    } catch (error) {
+      console.error('Error loading symbols:', error);
+    }
+  }
+
+  async function loadDateRangeSymbols() {
+    try {
+      const response = await fetch(`${API_BASE}/symbols`);
+      const data = await response.json();
+      
+      const select = document.getElementById('dateRangeSymbol');
+      select.innerHTML = data.symbols.map(s => `<option value="${s}">${s}</option>`).join('');
+    } catch (error) {
+      console.error('Error loading symbols:', error);
+    }
+  }
+
+  async function loadComparisonCharts() {
+    const selectedStocks = Array.from(document.querySelectorAll('input[name="stock"]:checked')).map(cb => cb.value);
+    const range = document.getElementById('rangeSelector').value;
+    
+    if (selectedStocks.length === 0) {
+      alert('Please select at least one stock');
+      return;
+    }
+    
+    try {
+      const promises = selectedStocks.map(async symbol => {
+        const [statsRes, timeseriesRes] = await Promise.all([
+          fetch(`${API_BASE}/portfolio/${symbol}`),
+          fetch(`${API_BASE}/portfolio_timeseries/${symbol}?range=${range}`)
+        ]);
+        return {
+          symbol,
+          stats: await statsRes.json(),
+          timeseries: await timeseriesRes.json()
+        };
+      });
+      
+      const results = await Promise.all(promises);
+      
+      // Display stats
+      displayComparisonStats(results);
+      
+      // Draw charts
+      drawPnLChart(results);
+      drawPriceChart(results);
+      drawValueChart(results);
+      
+    } catch (error) {
+      console.error('Error loading comparison data:', error);
+    }
+  }
+
+  function displayComparisonStats(results) {
+    let totalEquity = 0;
+    let totalPnL = 0;
+    let statsHTML = '<div class="panel"><h2>Selected Holdings</h2><div class="holdings-grid">';
+    
+    results.forEach(({symbol, stats}) => {
+      if (!stats.error) {
+        totalEquity += stats.equity;
+        totalPnL += stats.pnl;
+        
+        statsHTML += `
+          <div class="holding-card">
+            <h4>${stats.symbol}</h4>
+            <div class="holding-stat"><span>Shares:</span><strong>${stats.total_shares}</strong></div>
+            <div class="holding-stat"><span>Avg Cost:</span><strong>$${stats.avg_cost}</strong></div>
+            <div class="holding-stat"><span>Current:</span><strong>$${stats.current_price}</strong></div>
+            <div class="holding-stat"><span>Equity:</span><strong>$${stats.equity.toLocaleString()}</strong></div>
+            <div class="holding-stat">
+              <span>P&L:</span>
+              <strong class="${stats.pnl >= 0 ? 'positive' : 'negative'}">
+                ${stats.pnl >= 0 ? '+' : ''}$${stats.pnl.toLocaleString()}
+              </strong>
+            </div>
+            <div class="holding-stat">
+              <span>ROI:</span>
+              <strong class="${stats.roi_percent >= 0 ? 'positive' : 'negative'}">
+                ${stats.roi_percent >= 0 ? '+' : ''}${stats.roi_percent}%
+              </strong>
+            </div>
+          </div>
+        `;
+      }
+    });
+    
+    statsHTML += `</div>
+      <div style="margin-top: 20px; padding: 20px; background: #e3f2fd; border-radius: 10px;">
+        <h3>Combined Total</h3>
+        <div style="display: flex; gap: 30px; font-size: 1.2em; margin-top: 10px;">
+          <div><strong>Total Equity:</strong> $${totalEquity.toLocaleString()}</div>
+          <div class="${totalPnL >= 0 ? 'positive' : 'negative'}">
+            <strong>Total P&L:</strong> ${totalPnL >= 0 ? '+' : ''}$${totalPnL.toLocaleString()}
+          </div>
+        </div>
+      </div></div>
+    `;
+    
+    document.getElementById('comparisonStats').innerHTML = statsHTML;
+  }
+
+  function drawPnLChart(results) {
+    const ctx = document.getElementById('pnlChart').getContext('2d');
+    if (charts.pnl) charts.pnl.destroy();
+    
+    const datasets = results.map((result, index) => {
+      const data = result.timeseries;
+      if (!data || data.error) return null;
+      
+      return {
+        label: `${result.symbol} P&L`,
+        data: data.map(d => ({ x: new Date(d.Date), y: d.pnl })),
+        borderColor: CHART_COLORS[index % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[index % CHART_COLORS.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
+        tension: 0.3,
+        fill: false
+      };
+    }).filter(d => d !== null);
+    
+    charts.pnl = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top' }
+        },
+        scales: {
+          x: { type: 'time' },
+          y: {
+            ticks: {
+              callback: value => '$' + value.toLocaleString()
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function drawPriceChart(results) {
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    if (charts.price) charts.price.destroy();
+    
+    const datasets = results.map((result, index) => {
+      const data = result.timeseries;
+      if (!data || data.error) return null;
+      
+      return {
+        label: `${result.symbol}`,
+        data: data.map(d => ({ x: new Date(d.Date), y: d.Close })),
+        borderColor: CHART_COLORS[index % CHART_COLORS.length],
+        tension: 0.3,
+        fill: false
+      };
+    }).filter(d => d !== null);
+    
+    charts.price = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top' }
+        },
+        scales: {
+          x: { type: 'time' },
+          y: {
+            ticks: {
+              callback: value => '$' + value.toFixed(2)
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function drawValueChart(results) {
+    const ctx = document.getElementById('valueChart').getContext('2d');
+    if (charts.value) charts.value.destroy();
+    
+    const datasets = results.map((result, index) => {
+      const data = result.timeseries;
+      if (!data || data.error) return null;
+      
+      return {
+        label: `${result.symbol}`,
+        data: data.map(d => ({ x: new Date(d.Date), y: d.equity })),
+        borderColor: CHART_COLORS[index % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[index % CHART_COLORS.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
+        tension: 0.3,
+        fill: true
+      };
+    }).filter(d => d !== null);
+    
+    charts.value = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top' }
+        },
+        scales: {
+          x: { type: 'time' },
+          y: {
+            stacked: false,
+            ticks: {
+              callback: value => '$' + value.toLocaleString()
+            }
+          }
+        }
+      }
+    });
+  }
+
+  async function loadDateRangeData() {
+    const symbol = document.getElementById('dateRangeSymbol').value;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    try {
+      const response = await fetch(`${API_BASE}/analytics/date_range?symbol=${symbol}&start_date=${startDate}&end_date=${endDate}`);
+      const result = await response.json();
+      
+      const ctx = document.getElementById('dateRangeChart').getContext('2d');
+      if (charts.dateRange) charts.dateRange.destroy();
+      
+      charts.dateRange = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: `${symbol} Price`,
+            data: result.data.map(d => ({ x: new Date(d.Date), y: d.Close })),
+            borderColor: 'rgb(75, 192, 192)',
+            yAxisID: 'y'
+          }, {
+            label: 'Portfolio Value',
+            data: result.data.map(d => ({ x: new Date(d.Date), y: d.equity })),
+            borderColor: 'rgb(54, 162, 235)',
+            yAxisID: 'y1'
+          }, {
+            label: 'P&L',
+            data: result.data.map(d => ({ x: new Date(d.Date), y: d.pnl })),
+            borderColor: 'rgb(255, 99, 132)',
+            yAxisID: 'y1'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { type: 'time' },
+            y: {
+              position: 'left',
+              ticks: { callback: value => '$' + value.toFixed(2) }
+            },
+            y1: {
+              position: 'right',
+              grid: { drawOnChartArea: false },
+              ticks: { callback: value => '$' + value.toLocaleString() }
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error loading date range data:', error);
+    }
+  }
+
+  // Export functions
+  function exportCSV() {
+    window.open(`${API_BASE}/export/csv`, '_blank');
+  }
+
+  function downloadChartImage(chartId, filename) {
+    const canvas = document.getElementById(chartId);
+    const url = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `${filename}.png`;
+    link.href = url;
+    link.click();
+  }
+
+  async function exportSummary() {
+    try {
+      const response = await fetch(`${API_BASE}/export/summary`);
+      const data = await response.json();
+      
+      const summaryHTML = `
+        <h3>Portfolio Summary Report</h3>
+        <p><strong>Generated:</strong> ${new Date(data.generated_at).toLocaleString()}</p>
+        
+        <h4>Overview</h4>
+        <p><strong>Total Equity:</strong> $${data.overview.total_equity.toLocaleString()}</p>
+        <p><strong>Total P&L:</strong> $${data.overview.total_pnl.toLocaleString()}</p>
+        <p><strong>Total ROI:</strong> ${data.overview.total_roi.toFixed(2)}%</p>
+        <p><strong>Holdings:</strong> ${data.overview.holdings.length}</p>
+        
+        <h4>Sector Allocation</h4>
+        ${data.sectors.sectors.map(s => `<p>${s.sector}: $${s.value.toLocaleString()} (${s.percentage}%)</p>`).join('')}
+        
+        <h4>Top 5 Performers</h4>
+        ${data.top_performers.map(p => `<p>${p.symbol}: ${p.roi.toFixed(2)}% ($${p.pnl.toLocaleString()})</p>`).join('')}
+        
+        <h4>Performance Metrics</h4>
+        <p><strong>Annual Return:</strong> ${data.performance.annual_return}%</p>
+        <p><strong>Volatility:</strong> ${data.performance.volatility}%</p>
+        <p><strong>Sharpe Ratio:</strong> ${data.performance.sharpe_ratio}</p>
+        ${data.performance.outperformance ? `<p><strong>vs S&P 500:</strong> ${data.performance.outperformance}%</p>` : ''}
+      `;
+      
+      document.getElementById('summaryReport').innerHTML = summaryHTML;
+    } catch (error) {
+      console.error('Error generating summary:', error);
+    }
+  }
+
+  // ========== STOCK LENDING TAB ==========
+  async function loadLendingData() {
+    try {
+      // Load summary
+      const summaryRes = await fetch(`${API_BASE}/lending/summary`);
+      const summary = await summaryRes.json();
+      
+      document.getElementById('totalLendingIncome').textContent = 
+        `$${summary.total_income?.toLocaleString() || '0.00'}`;
+      
+      // Load transactions
+      const transRes = await fetch(`${API_BASE}/lending/transactions`);
+      const trans = await transRes.json();
+      
+      const tbody = document.getElementById('lendingTableBody');
+      if (trans.total === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No stock lending transactions found</td></tr>';
+      } else {
+        tbody.innerHTML = trans.transactions.map(t => `
+          <tr>
+            <td>${t.date || 'N/A'}</td>
+            <td>${t.Instrument || ''}</td>
+            <td>${t.Description || ''}</td>
+            <td>${t['Trans Code'] || ''}</td>
+            <td style="color: ${parseFloat(String(t.Amount || '0').replace(/[^0-9.-]/g, '')) >= 0 ? 'green' : 'red'}">
+              ${t.Amount || '$0.00'}
+            </td>
+          </tr>
+        `).join('');
+      }
+    } catch (error) {
+      console.error('Error loading lending data:', error);
+      document.getElementById('lendingTableBody').innerHTML = 
+        '<tr><td colspan="5" style="text-align:center;color:red;">Error loading data</td></tr>';
+    }
+  }
+
+  // ========== NON-TRADE TRANSACTIONS TAB ==========
+  async function loadNonTradeData() {
+    try {
+      // Load summary
+      const summaryRes = await fetch(`${API_BASE}/nontrade/summary`);
+      const summary = await summaryRes.json();
+      
+      const summaryDiv = document.getElementById('nonTradeSummary');
+      if (summary.summary && summary.summary.length > 0) {
+        summaryDiv.innerHTML = summary.summary.map(s => `
+          <div class="metric-box">
+            <h4>${s.type}</h4>
+            <div class="value" style="color: ${s.total_amount >= 0 ? 'green' : 'red'}; font-size: 1.5em;">
+              $${s.total_amount.toLocaleString()}
+            </div>
+            <p style="margin-top: 10px; color: #6c757d;">${s.count} transactions</p>
+          </div>
+        `).join('');
+      } else {
+        summaryDiv.innerHTML = '<p>No non-trade transaction types found</p>';
+      }
+      
+      // Load transactions
+      const transRes = await fetch(`${API_BASE}/nontrade/all`);
+      const trans = await transRes.json();
+      
+      const tbody = document.getElementById('nonTradeTableBody');
+      if (trans.total === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No non-trade transactions found</td></tr>';
+      } else {
+        tbody.innerHTML = trans.transactions.map(t => `
+          <tr>
+            <td>${t.date || 'N/A'}</td>
+            <td>${t.Instrument || ''}</td>
+            <td>${t.Description || ''}</td>
+            <td><span style="background: #e3f2fd; padding: 4px 8px; border-radius: 4px;">${t['Trans Code'] || ''}</span></td>
+            <td>${t.Quantity || ''}</td>
+            <td>${t.Price || ''}</td>
+            <td style="color: ${parseFloat(String(t.Amount || '0').replace(/[^0-9.-]/g, '')) >= 0 ? 'green' : 'red'}; font-weight: bold;">
+              ${t.Amount || '$0.00'}
+            </td>
+          </tr>
+        `).join('');
+      }
+    } catch (error) {
+      console.error('Error loading non-trade data:', error);
+      document.getElementById('nonTradeTableBody').innerHTML = 
+        '<tr><td colspan="7" style="text-align:center;color:red;">Error loading data</td></tr>';
+    }
+  }
+
+  // Initialize on load
+  document.addEventListener('DOMContentLoaded', () => {
+    loadOverview();
+    loadSymbolsForComparison();
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,30 @@
+# Environment variables (contains passwords)
+.env
+
+# CSV data files (private financial data)
+*.csv
+portfolio_data.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

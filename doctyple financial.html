@@ -1,27 +1,428 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Nate's Portfolio</title>
+  <title>Nate's Portfolio Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    .controls {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    select, button {
+      padding: 10px;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0052a3;
+    }
+    .chart-container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    #stats {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-item {
+      display: inline-block;
+      margin: 10px 20px;
+    }
+    .stat-label {
+      font-weight: bold;
+      color: #666;
+    }
+    .stat-value {
+      font-size: 20px;
+      color: #333;
+    }
+    .positive {
+      color: green;
+    }
+    .negative {
+      color: red;
+    }
+  </style>
 </head>
 <body>
 
-<h1>Nate's Portfolio</h1>
+<h1>📊 Nate's Portfolio Tracker</h1>
 
-<select id="symbol">
-  <option value="AAPL">AAPL</option>
-  <option value="MSFT">MSFT</option>
-</select>
+<div class="controls">
+  <div style="margin-bottom: 15px;">
+    <label style="font-weight: bold; display: block; margin-bottom: 10px;">Select Stocks to Compare:</label>
+    <div id="symbolCheckboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;">
+      Loading symbols...
+    </div>
+  </div>
+  <div style="margin-top: 15px;">
+    <button onclick="loadData()" style="padding: 12px 24px; font-size: 18px;">Load Charts</button>
+    <select id="range" style="margin-left: 10px;">
+      <option value="1m">1 Month</option>
+      <option value="3m">3 Months</option>
+      <option value="1y" selected>1 Year</option>
+      <option value="5y">5 Years</option>
+    </select>
+  </div>
+</div>
 
-<button onclick="loadData()">Load</button>
-
-<h2>Market Trend</h2>
-<canvas id="marketChart"></canvas>
-
-<h2>Your Position</h2>
 <div id="stats"></div>
-<canvas id="personalChart"></canvas>
 
-<script src="app.js"></script>
+<div class="chart-container">
+  <h2>Combined P&L Over Time</h2>
+  <canvas id="pnlChart"></canvas>
+</div>
+
+<div class="chart-container">
+  <h2>Individual Stock Prices</h2>
+  <canvas id="marketChart"></canvas>
+</div>
+
+<div class="chart-container">
+  <h2>Portfolio Value Over Time</h2>
+  <canvas id="personalChart"></canvas>
+</div>
+
+<script>
+  const API_BASE = 'http://localhost:8000';
+  let marketChart = null;
+  let personalChart = null;
+  let pnlChart = null;
+
+  const CHART_COLORS = [
+    'rgb(75, 192, 192)', 'rgb(255, 99, 132)', 'rgb(54, 162, 235)',
+    'rgb(255, 205, 86)', 'rgb(153, 102, 255)', 'rgb(255, 159, 64)',
+    'rgb(201, 203, 207)', 'rgb(100, 181, 246)', 'rgb(129, 199, 132)',
+    'rgb(255, 138, 101)', 'rgb(171, 71, 188)', 'rgb(255, 213, 79)'
+  ];
+
+  // Load symbols on page load
+  async function loadSymbols() {
+    console.log('Loading symbols...');
+    try {
+      const response = await fetch(`${API_BASE}/symbols`);
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Symbols received:', data.symbols);
+      
+      const container = document.getElementById('symbolCheckboxes');
+      if (data.symbols && data.symbols.length > 0) {
+        container.innerHTML = data.symbols.map(s => `
+          <label style="display: flex; align-items: center; cursor: pointer;">
+            <input type="checkbox" name="stock" value="${s}" style="margin-right: 5px;">
+            <span>${s}</span>
+          </label>
+        `).join('');
+        console.log('Symbols loaded successfully');
+      } else {
+        container.innerHTML = '<p>No symbols found</p>';
+        console.warn('No symbols in response');
+      }
+    } catch (error) {
+      console.error('Error loading symbols:', error);
+      document.getElementById('symbolCheckboxes').innerHTML = '<p style="color: red;">Error loading symbols</p>';
+    }
+  }
+
+  function getSelectedSymbols() {
+    const checkboxes = document.querySelectorAll('input[name="stock"]:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+  }
+
+  async function loadData() {
+    const symbols = getSelectedSymbols();
+    const range = document.getElementById('range').value;
+    
+    if (symbols.length === 0) {
+      alert('Please select at least one stock');
+      return;
+    }
+
+    try {
+      // Load data for all selected symbols
+      const promises = symbols.map(async symbol => {
+        const [statsRes, timeseriesRes] = await Promise.all([
+          fetch(`${API_BASE}/portfolio/${symbol}`),
+          fetch(`${API_BASE}/portfolio_timeseries/${symbol}?range=${range}`)
+        ]);
+        return {
+          symbol,
+          stats: await statsRes.json(),
+          timeseries: await timeseriesRes.json()
+        };
+      });
+
+      const results = await Promise.all(promises);
+      
+      // Display combined stats
+      displayCombinedStats(results);
+      
+      // Draw charts
+      drawPnLChart(results, range);
+      drawMarketChart(results);
+      drawPersonalChart(results);
+
+    } catch (error) {
+      console.error('Error loading data:', error);
+      alert('Error loading data. Make sure the server is running.');
+    }
+  }
+
+  function displayCombinedStats(results) {
+    let totalEquity = 0;
+    let totalPnL = 0;
+    let statsHTML = '<h3>Selected Holdings Summary</h3><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
+
+    results.forEach(({symbol, stats}) => {
+      if (!stats.error) {
+        totalEquity += stats.equity;
+        totalPnL += stats.pnl;
+        
+        const pnlClass = stats.pnl >= 0 ? 'positive' : 'negative';
+        const pnlSign = stats.pnl >= 0 ? '+' : '';
+
+        statsHTML += `
+          <div style="border: 1px solid #ddd; padding: 15px; border-radius: 5px; background: #fafafa;">
+            <h4 style="margin: 0 0 10px 0; color: #0066cc;">${stats.symbol}</h4>
+            <div><strong>Shares:</strong> ${stats.total_shares}</div>
+            <div><strong>Avg Cost:</strong> $${stats.avg_cost}</div>
+            <div><strong>Current:</strong> $${stats.current_price}</div>
+            <div><strong>Equity:</strong> $${stats.equity.toLocaleString()}</div>
+            <div class="${pnlClass}"><strong>P&L:</strong> ${pnlSign}$${stats.pnl.toLocaleString()}</div>
+            <div class="${pnlClass}"><strong>ROI:</strong> ${pnlSign}${stats.roi_percent}%</div>
+          </div>
+        `;
+      }
+    });
+
+    const totalPnlClass = totalPnL >= 0 ? 'positive' : 'negative';
+    const totalPnlSign = totalPnL >= 0 ? '+' : '';
+
+    statsHTML += `</div>
+      <div style="margin-top: 20px; padding: 20px; background: #e3f2fd; border-radius: 8px; border: 2px solid #2196f3;">
+        <h3 style="margin: 0 0 15px 0;">Total Portfolio</h3>
+        <div style="display: flex; gap: 30px; font-size: 18px;">
+          <div><strong>Total Equity:</strong> $${totalEquity.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+          <div class="${totalPnlClass}"><strong>Total P&L:</strong> ${totalPnlSign}$${totalPnL.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('stats').innerHTML = statsHTML;
+  }
+
+  function drawPnLChart(results, range) {
+    const ctx = document.getElementById('pnlChart').getContext('2d');
+    
+    if (pnlChart) {
+      pnlChart.destroy();
+    }
+
+    const datasets = results.map((result, index) => {
+      const data = result.timeseries;
+      if (!data || data.error) return null;
+
+      return {
+        label: `${result.symbol} P&L`,
+        data: data.map(d => ({
+          x: new Date(d.Date),
+          y: d.pnl
+        })),
+        borderColor: CHART_COLORS[index % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[index % CHART_COLORS.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
+        tension: 0.1,
+        fill: false
+      };
+    }).filter(d => d !== null);
+
+    pnlChart = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top'
+          },
+          title: {
+            display: true,
+            text: `Profit & Loss - ${range.toUpperCase()}`
+          }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: range === '1m' ? 'day' : range === '1y' ? 'month' : 'month'
+            }
+          },
+          y: {
+            ticks: {
+              callback: function(value) {
+                return '$' + value.toLocaleString();
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function drawMarketChart(results) {
+    const ctx = document.getElementById('marketChart').getContext('2d');
+    
+    if (marketChart) {
+      marketChart.destroy();
+    }
+
+    const datasets = results.map((result, index) => {
+      const data = result.timeseries;
+      if (!data || data.error) return null;
+
+      return {
+        label: `${result.symbol} Price`,
+        data: data.map(d => ({
+          x: new Date(d.Date),
+          y: d.Close
+        })),
+        borderColor: CHART_COLORS[index % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[index % CHART_COLORS.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
+        tension: 0.1,
+        fill: false,
+        yAxisID: `y${index}`
+      };
+    }).filter(d => d !== null);
+
+    // Create separate y-axes for each stock
+    const yAxes = {};
+    datasets.forEach((dataset, index) => {
+      yAxes[`y${index}`] = {
+        type: 'linear',
+        display: index === 0, // Only show first axis
+        position: index === 0 ? 'left' : 'right',
+        ticks: {
+          callback: function(value) {
+            return '$' + value.toFixed(2);
+          }
+        },
+        grid: {
+          drawOnChartArea: index === 0
+        }
+      };
+    });
+
+    marketChart = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top'
+          }
+        },
+        scales: {
+          x: {
+            type: 'time'
+          },
+          ...yAxes
+        }
+      }
+    });
+  }
+
+  function drawPersonalChart(results) {
+    const ctx = document.getElementById('personalChart').getContext('2d');
+    
+    if (personalChart) {
+      personalChart.destroy();
+    }
+
+    const datasets = results.map((result, index) => {
+      const data = result.timeseries;
+      if (!data || data.error) return null;
+
+      return {
+        label: `${result.symbol} Value`,
+        data: data.map(d => ({
+          x: new Date(d.Date),
+          y: d.equity
+        })),
+        borderColor: CHART_COLORS[index % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[index % CHART_COLORS.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
+        tension: 0.1,
+        fill: true
+      };
+    }).filter(d => d !== null);
+
+    personalChart = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top'
+          }
+        },
+        scales: {
+          x: {
+            type: 'time'
+          },
+          y: {
+            stacked: false,
+            ticks: {
+              callback: function(value) {
+                return '$' + value.toLocaleString();
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Load symbols when page loads
+  loadSymbols();
+</script>
 </body>
 </html>
