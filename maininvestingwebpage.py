@@ -38,16 +38,23 @@ def parse_brokerage_csv(filepath: str) -> pd.DataFrame:
     try:
         # Read CSV and skip bad lines (multiline descriptions still exist)
         df = pd.read_csv(filepath, on_bad_lines='skip')
+        logger.info(f"CSV columns found: {df.columns.tolist()}")
+        logger.info(f"Total rows read: {len(df)}")
     except Exception as e:
         logger.error(f"Error reading CSV: {e}")
         return pd.DataFrame(columns=["symbol", "shares", "price", "date", "trans_type"])
     
-    # Filter for Buy and Sell transactions only
-    if 'Trans Code' not in df.columns:
-        logger.error("CSV missing 'Trans Code' column")
-        return pd.DataFrame(columns=["symbol", "shares", "price", "date", "trans_type"])
+    # Check for required columns
+    required_cols = ['Trans Code', 'Instrument', 'Shares', 'Share_Price', 'Settle Date']
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        logger.error(f"CSV missing required columns: {missing_cols}")
+        logger.error(f"Available columns: {df.columns.tolist()}")
+        raise ValueError(f"CSV is missing required columns: {', '.join(missing_cols)}. Found columns: {', '.join(df.columns.tolist())}")
     
+    # Filter for Buy and Sell transactions only
     df = df[df['Trans Code'].isin(['Buy', 'Sell'])].copy()
+    logger.info(f"Buy/Sell transactions: {len(df)}")
     
     # Extract symbol from Instrument column (letters only)
     df['symbol'] = df['Instrument'].astype(str).str.strip().str.upper()
@@ -66,6 +73,7 @@ def parse_brokerage_csv(filepath: str) -> pd.DataFrame:
     
     # Clean up
     df = df[['date', 'symbol', 'shares', 'price', 'trans_type']].dropna()
+    logger.info(f"Final parsed transactions: {len(df)}")
     
     return df
 
