@@ -3,15 +3,30 @@ import yfinance as yf
 import pandas as pd
 import os
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 import re
+import traceback
 
 # ---------------- APP SETUP ----------------
 app = FastAPI(title="Portfolio Tracker API")
 logger = logging.getLogger("portfolio_app")
+logging.basicConfig(level=logging.INFO)
+
+# Add global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Global exception handler caught: {type(exc).__name__}: {str(exc)}")
+    logger.error(traceback.format_exc())
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"{type(exc).__name__}: {str(exc)}",
+            "path": str(request.url)
+        }
+    )
 
 # Add CORS middleware
 app.add_middleware(
