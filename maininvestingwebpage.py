@@ -3,13 +3,11 @@ import yfinance as yf
 import pandas as pd
 import os
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import re
-import secrets
 
 # ---------------- APP SETUP ----------------
 app = FastAPI(title="Portfolio Tracker API")
@@ -140,9 +138,6 @@ async def upload_csv(file: UploadFile = File(...)):
         "symbols": df["symbol"].unique().tolist()
     }
 
-# ---------------- UPLOAD PASSWORD ----------------
-UPLOAD_PASSWORD = os.getenv("UPLOAD_PASSWORD", "portfolio2026")  # Change this in production
-
 # ---------------- CSV UPLOAD ----------------
 @app.get("/upload", response_class=HTMLResponse)
 def upload_page():
@@ -221,9 +216,6 @@ def upload_page():
         <div class="upload-container">
             <h1>📊 Upload Portfolio CSV</h1>
             <form id="uploadForm">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-                
                 <label for="file">CSV File:</label>
                 <input type="file" id="file" name="file" accept=".csv" required>
                 
@@ -238,7 +230,6 @@ def upload_page():
                 
                 const formData = new FormData();
                 formData.append('file', document.getElementById('file').files[0]);
-                formData.append('password', document.getElementById('password').value);
                 
                 const messageDiv = document.getElementById('message');
                 messageDiv.style.display = 'none';
@@ -273,12 +264,8 @@ def upload_page():
     """
 
 @app.post("/upload")
-async def upload_csv(file: UploadFile = File(...), password: str = Form(...)):
-    """Upload portfolio CSV with password protection"""
-    # Verify password
-    if not secrets.compare_digest(password, UPLOAD_PASSWORD):
-        raise HTTPException(status_code=403, detail="Invalid password")
-    
+async def upload_csv(file: UploadFile = File(...)):
+    """Upload portfolio CSV"""
     # Validate file type
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
