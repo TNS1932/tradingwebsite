@@ -927,3 +927,6 @@ def lending_summary():
         "transaction_count": len(lending),
         "symbols_lent": lending['Instrument'].nunique() if 'Instrument' in lending.columns else 0
     }
+
+# Vercel serverless handler
+handler = app
