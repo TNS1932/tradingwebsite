@@ -363,7 +363,18 @@ def serve_html():
         </body>
         </html>
         """)
-    return FileResponse("index.html")
+    # Try to find index.html in multiple possible locations for Vercel
+    possible_paths = [
+        "index.html",
+        "../index.html",
+        "/var/task/index.html",
+        os.path.join(os.path.dirname(__file__), "..", "index.html")
+    ]
+    for html_path in possible_paths:
+        if os.path.exists(html_path):
+            return FileResponse(html_path)
+    # If no HTML file found, return error message
+    return HTMLResponse("<h1>Error: index.html not found. Please upload CSV at /upload</h1>", status_code=500)
 
 # ---------------- MARKET DATA ----------------
 @app.get("/market/{symbol}")
