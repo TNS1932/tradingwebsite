@@ -36,13 +36,24 @@ def parse_brokerage_csv(filepath: str) -> pd.DataFrame:
         return pd.DataFrame(columns=["symbol", "shares", "price", "date", "trans_type"])
     
     try:
-        # Read CSV and skip bad lines (multiline descriptions still exist)
-        df = pd.read_csv(filepath, on_bad_lines='skip')
+        # Read CSV - handle multiline fields properly
+        df = pd.read_csv(filepath, on_bad_lines='skip', skipinitialspace=True)
         logger.info(f"CSV columns found: {df.columns.tolist()}")
         logger.info(f"Total rows read: {len(df)}")
+        
+        # If columns look wrong, try reading with different settings
+        if 'Trans Code' not in df.columns:
+            logger.info("Retrying CSV read with quoting=csv.QUOTE_ALL")
+            import csv
+            df = pd.read_csv(filepath, quoting=csv.QUOTE_ALL, on_bad_lines='skip')
+            logger.info(f"Retry - CSV columns: {df.columns.tolist()}")
+            
     except Exception as e:
-        logger.error(f"Error reading CSV: {e}")
+        logger.error(f"Error reading CSV: {e}", exc_info=True)
         return pd.DataFrame(columns=["symbol", "shares", "price", "date", "trans_type"])
+    
+    # Clean column names (remove extra spaces)
+    df.columns = df.columns.str.strip()
     
     # Check for required columns
     required_cols = ['Trans Code', 'Instrument', 'Shares', 'Share_Price', 'Settle Date']
@@ -56,6 +67,10 @@ def parse_brokerage_csv(filepath: str) -> pd.DataFrame:
     df = df[df['Trans Code'].isin(['Buy', 'Sell'])].copy()
     logger.info(f"Buy/Sell transactions: {len(df)}")
     
+    if len(df) == 0:
+        logger.warning("No Buy/Sell transactions found in CSV")
+        return pd.DataFrame(columns=["symbol", "shares", "price", "date", "trans_type"])
+    
     # Extract symbol from Instrument column (letters only)
     df['symbol'] = df['Instrument'].astype(str).str.strip().str.upper()
     
@@ -64,7 +79,7 @@ def parse_brokerage_csv(filepath: str) -> pd.DataFrame:
     
     # Extract quantity and price from the actual column names in CSV
     df['shares'] = pd.to_numeric(df['Shares'], errors='coerce')
-    df['price'] = pd.to_numeric(df['Share_Price'].astype(str).str.replace('$', '').str.replace(',', ''), errors='coerce')
+    df['price'] = pd.to_numeric(df['Share_Price'].astype(str).str.replace('$', '').str.replace(',', '').str.replace('(', '-').str.replace(')', ''), errors='coerce')
     df['date'] = pd.to_datetime(df['Settle Date'], errors='coerce')
     df['trans_type'] = df['Trans Code']
     
