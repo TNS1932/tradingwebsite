@@ -207,28 +207,39 @@ def upload_page():
     <!DOCTYPE html>
     <html>
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="apple-mobile-web-app-capable" content="yes">
         <title>Upload Portfolio Data</title>
         <style>
             body {
-                font-family: Arial, sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 min-height: 100vh;
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 margin: 0;
+                padding: 10px;
             }
             .upload-container {
                 background: white;
-                padding: 40px;
+                padding: 20px;
                 border-radius: 15px;
                 box-shadow: 0 10px 30px rgba(0,0,0,0.2);
                 max-width: 500px;
                 width: 100%;
             }
+            @media (min-width: 768px) {
+                .upload-container { padding: 40px; }
+            }
             h1 {
                 color: #667eea;
-                margin-bottom: 30px;
+                margin-bottom: 20px;
+                font-size: 1.5em;
+            }
+            @media (min-width: 768px) {
+                h1 { margin-bottom: 30px; font-size: 2em; }
             }
             input[type="password"], input[type="file"] {
                 width: 100%;
@@ -238,6 +249,7 @@ def upload_page():
                 border-radius: 8px;
                 font-size: 16px;
                 box-sizing: border-box;
+                -webkit-appearance: none;
             }
             button {
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -245,6 +257,8 @@ def upload_page():
                 border: none;
                 padding: 15px 30px;
                 border-radius: 8px;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
                 font-size: 16px;
                 font-weight: 600;
                 cursor: pointer;
