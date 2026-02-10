@@ -311,66 +311,7 @@ def get_current_holdings() -> pd.DataFrame:
 # ---------------- SERVE HTML ----------------
 @app.get("/")
 def serve_html():
-    # Check if CSV exists
-    if not os.path.exists(ACTIVE_PORTFOLIO_FILE):
-        return HTMLResponse(f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Portfolio Analytics - CSV Required</title>
-            <style>
-                body {{
-                    font-family: Arial, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
-                    margin: 0;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                }}
-                .container {{
-                    background: white;
-                    padding: 40px;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                    text-align: center;
-                    max-width: 600px;
-                }}
-                h1 {{ color: #333; margin-bottom: 20px; }}
-                p {{ color: #666; line-height: 1.8; margin-bottom: 20px; }}
-                code {{
-                    background: #f5f5f5;
-                    padding: 15px;
-                    border-radius: 5px;
-                    display: block;
-                    margin: 20px 0;
-                    font-size: 14px;
-                    color: #e83e8c;
-                }}
-                .refresh {{
-                    display: inline-block;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 12px 30px;
-                    border-radius: 5px;
-                    text-decoration: none;
-                    font-weight: bold;
-                    margin-top: 20px;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>📊 Portfolio Analytics</h1>
-                <p><strong>CSV file not found!</strong></p>
-                <p>Please place your portfolio CSV file in the following location:</p>
-                <code>{ACTIVE_PORTFOLIO_FILE}</code>
-                <p>The CSV should contain columns: Settle Date, Instrument, Trans Code, Shares, Share_Price</p>
-                <a href="/" class="refresh" onclick="location.reload(); return false;">🔄 Refresh Page</a>
-            </div>
-        </body>
-        </html>
-        """)
+    """Serve the main HTML page with CSV uploader"""
     return FileResponse("index.html")
 
 @app.get("/portfolio_data.csv")
