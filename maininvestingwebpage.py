@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -22,6 +23,9 @@ except ImportError:
 app = FastAPI(title="Portfolio Tracker API")
 logger = logging.getLogger("portfolio_app")
 logging.basicConfig(level=logging.INFO)
+
+# Get the directory where this script is located
+BASE_DIR = Path(__file__).resolve().parent
 
 # Thread pool for concurrent API calls
 executor = ThreadPoolExecutor(max_workers=10)
@@ -309,7 +313,10 @@ def get_current_holdings() -> pd.DataFrame:
 # No upload UI needed - just place your CSV file in the root directory
 
 # ---------------- SERVE HTML ----------------
-@app.get("/")
+@apphtml_path = BASE_DIR / "index.html"
+    if not html_path.exists():
+        return HTMLResponse(content=f"Error: index.html not found at {html_path}", status_code=500)
+    return FileResponse(html_path
 def serve_html():
     """Serve the main HTML page with CSV uploader"""
     return FileResponse("index.html")
