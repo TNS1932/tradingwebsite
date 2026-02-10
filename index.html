@@ -1,26 +1,32 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Portfolio">
   <meta name="mobile-web-app-capable" content="yes">
-  <title>Advanced Portfolio Tracker</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.0.2/dist/chartjs-chart-treemap.min.js"></script>
+  <meta name="theme-color" content="#667eea">
+  <title>Portfolio Analytics</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       padding: 10px;
+      color: black;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
     }
     
     @media (min-width: 768px) {
-      body { padding: 20px; }
+      body {
+        padding: 20px;
+      }
     }
     
     .container {
@@ -34,100 +40,121 @@
       border-radius: 15px;
       margin-bottom: 15px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      position: relative;
     }
     
     @media (min-width: 768px) {
-      header { padding: 30px; margin-bottom: 20px; }
+      header {
+        padding: 30px;
+        margin-bottom: 20px;
+      }
     }
     
     h1 {
-      color: #667eea;
-      font-size: 2.5em;
+      color: black;
+      font-size: 1.5em;
       margin-bottom: 10px;
+      word-break: break-word;
     }
     
-    .quick-stats {
+    @media (min-width: 768px) {
+      h1 {
+        font-size: 2.5em;
+      }
+    }
+    
+    .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-      margin-top: 20px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    @media (min-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+      }
     }
     
     .stat-card {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
-      padding: 20px;
+      padding: 12px;
       border-radius: 10px;
       text-align: center;
     }
     
+    @media (min-width: 768px) {
+      .stat-card {
+        padding: 20px;
+      }
+    }
+    
     .stat-card h3 {
-      font-size: 0.9em;
+      font-size: 0.75em;
       opacity: 0.9;
-      margin-bottom: 5px;
+      margin-bottom: 8px;
+    }
+    
+    @media (min-width: 768px) {
+      .stat-card h3 {
+        font-size: 0.9em;
+        margin-bottom: 10px;
+      }
     }
     
     .stat-card .value {
-      font-size: 1.5em;
+      font-size: 1.3em;
       font-weight: bold;
     }
     
     @media (min-width: 768px) {
-      .stat-card .value { font-size: 2em; }
+      .stat-card .value {
+        font-size: 2em;
+      }
     }
     
     .tabs {
       display: flex;
-      gap: 5px;
-      margin-bottom: 15px;
+      gap: 10px;
+      margin-bottom: 20px;
       flex-wrap: wrap;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    
-    @media (min-width: 768px) {
-      .tabs { gap: 10px; margin-bottom: 20px; }
     }
     
     .tab-button {
-      background: white !important;
+      background: white;
       border: 2px solid #e9ecef;
-      padding: 12px 20px;
+      padding: 12px 15px;
       border-radius: 10px;
       cursor: pointer;
-      font-size: 14px !important;
+      font-size: 13px;
       font-weight: 600;
       transition: all 0.3s;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      color: #333 !important;
-      display: inline-block;
-      min-width: 100px;
-      text-align: center;
-      white-space: nowrap;
+      color: black;
+      min-height: 44px;
+      min-width: 44px;
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
       touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
     }
     
     @media (min-width: 768px) {
       .tab-button {
-        padding: 15px 30px;
-        font-size: 16px !important;
-        min-width: 120px;
+        padding: 12px 20px;
+        font-size: 14px;
       }
     }
     
-    .tab-button:hover, .tab-button:active {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-      background: #f8f9fa !important;
+    .tab-button:hover {
+      background: #f8f9fa;
       border-color: #667eea;
     }
     
     .tab-button.active {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-      color: white !important;
-      border-color: #667eea;
-      opacity: 1;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-color: transparent;
     }
     
     .tab-content {
@@ -140,198 +167,435 @@
     
     .panel {
       background: white;
-      padding: 25px;
+      padding: 15px;
       border-radius: 15px;
-      margin-bottom: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      margin-bottom: 15px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    @media (min-width: 768px) {
+      .panel {
+        padding: 25px;
+        margin-bottom: 20px;
+      }
     }
     
     .panel h2 {
-      color: #667eea;
-      margin-bottom: 20px;
-      font-size: 1.5em;
+      color: black;
+      margin-bottom: 15px;
+      font-size: 1.2em;
     }
     
-    .controls {
-      background: #f8f9fa;
-      padding: 20px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-    }
-    
-    .checkbox-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 10px;
-      margin: 15px 0;
-    }
-    
-    .checkbox-label {
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-      padding: 8px;
-      background: white;
-      border-radius: 5px;
-      transition: background 0.2s;
-    }
-    
-    .checkbox-label:hover {
-      background: #e9ecef;
-    }
-    
-    .checkbox-label input {
-      margin-right: 5px;
-    }
-    
-    button:not(.tab-button) {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: 600;
-      transition: all 0.3s;
-    }
-    
-    button:not(.tab-button):hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
-    }
-    
-    select, input {
-      padding: 10px;
-      border: 2px solid #e9ecef;
-      border-radius: 8px;
-      font-size: 16px;
-      margin-right: 10px;
-    }
-    
-    .holdings-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 15px;
-      margin-top: 20px;
-    }
-    
-    .holding-card {
-      border: 2px solid #e9ecef;
-      padding: 15px;
-      border-radius: 10px;
-      background: #f8f9fa;
-    }
-    
-    .holding-card h4 {
-      color: #667eea;
-      font-size: 1.3em;
-      margin-bottom: 10px;
-    }
-    
-    .holding-stat {
-      display: flex;
-      justify-content: space-between;
-      padding: 5px 0;
-    }
-    
-    .positive { color: #28a745; font-weight: bold; }
-    .negative { color: #dc3545; font-weight: bold; }
-    
-    .chart-container {
-      position: relative;
-      height: 400px;
-      margin-bottom: 30px;
-    }
-    
-    .export-buttons {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-    
-    .sector-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 15px;
-    }
-    
-    .sector-item {
-      padding: 15px;
-      background: #f8f9fa;
-      border-radius: 10px;
-      border-left: 4px solid #667eea;
-    }
-    
-    .performer-card {
-      background: #f8f9fa;
-      padding: 15px;
-      border-radius: 10px;
-      margin: 10px 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .date-picker-container {
-      background: #f8f9fa;
-      padding: 20px;
-      border-radius: 10px;
-      margin-bottom: 20px;
+    @media (min-width: 768px) {
+      .panel h2 {
+        margin-bottom: 20px;
+        font-size: 1.5em;
+      }
     }
     
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 15px;
+      font-size: 0.85em;
     }
     
-    th, td {
-      padding: 12px;
+    @media (min-width: 768px) {
+      table {
+        font-size: 1em;
+      }
+    }
+    
+    table th {
+      background: #f8f9fa;
+      padding: 8px 6px;
       text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid #dee2e6;
+      font-size: 0.9em;
+    }
+    
+    @media (min-width: 768px) {
+      table th {
+        padding: 12px;
+        font-size: 1em;
+      }
+    }
+    
+    table td {
+      padding: 8px 6px;
       border-bottom: 1px solid #e9ecef;
     }
     
-    th {
-      background: #667eea;
-      color: white;
-      font-weight: 600;
+    @media (min-width: 768px) {
+      table td {
+        padding: 12px;
+      }
     }
     
-    tr:hover {
+    table tr:hover {
       background: #f8f9fa;
     }
     
-    .metric-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-    }
-    
-    .metric-box {
-      background: #f8f9fa;
-      padding: 20px;
-      border-radius: 10px;
-      text-align: center;
-    }
-    
-    .metric-box h4 {
-      color: #6c757d;
-      font-size: 0.9em;
-      margin-bottom: 10px;
-    }
-    
-    .metric-box .value {
-      font-size: 2em;
-      font-weight: bold;
-      color: #667eea;
-    }
+    .positive { color: #28a745; }
+    .negative { color: #dc3545; }
     
     .loading {
       text-align: center;
       padding: 40px;
+      font-size: 1.2em;
+      color: black;
+    }
+    
+    .error {
+      color: #dc3545;
+      text-align: center;
+      padding: 20px;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      margin: 5px;
+      min-height: 44px;
+      min-width: 44px;
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
+      touch-action: manipulation;
+    }
+    
+    button:hover {
+      opacity: 0.9;
+    }
+    
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    @media (min-width: 768px) {
+      .comparison-grid {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+      }
+    }
+    
+    .comparison-card {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      border: 3px solid transparent;
+    }
+    
+    .comparison-card.selected {
+      border-color: #667eea;
+      background: #e7f3ff;
+    }
+    
+    .comparison-card h3 {
+      font-size: 1.8em;
+      margin-bottom: 15px;
+    }
+    
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #dee2e6;
+    }
+    
+    .metric:last-child {
+      border-bottom: none;
+    }
+    
+    .metric-label {
+      font-weight: 600;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 30px;
+      background: #e9ecef;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 10px;
+      position: relative;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+    
+    .stock-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .stock-checkbox {
+      padding: 10px 15px;
+      border: 2px solid #dee2e6;
+      border-radius: 5px;
+      cursor: pointer;
+      user-select: none;
+      background: white;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
+      touch-action: manipulation;
+    }
+    
+    .stock-checkbox input {
+      margin-right: 5px;
+    }
+    
+    .stock-checkbox.checked {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+    
+    .time-period-buttons {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    
+    .time-btn {
+      padding: 10px 16px;
+      border: 2px solid #dee2e6;
+      border-radius: 5px;
+      cursor: pointer;
+      background: white;
+      font-weight: 600;
+      min-height: 44px;
+      min-width: 44px;
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
+      touch-action: manipulation;
+    }
+    
+    .time-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+    
+    .dividend-section {
+      margin-top: 15px;
+      padding: 15px;
+      background: #fff3cd;
+      border-radius: 8px;
+      border-left: 4px solid #ffc107;
+    }
+    
+    .dividend-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 0.9em;
+    }
+    
+    .chart-container {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      height: 200px;
+      position: relative;
+    }
+    
+    .price-line {
+      position: relative;
+      height: 150px;
+      margin: 20px 0;
+    }
+    
+    .price-point {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #667eea;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    
+    .upload-section {
+      background: white;
+      padding: 15px;
+      border-radius: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    
+    @media (min-width: 768px) {
+      .upload-section {
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+    }
+    
+    .upload-section h2 {
+      color: #667eea;
+      margin-bottom: 15px;
+    }
+    
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+      margin: 10px;
+    }
+    
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    
+    .file-input-label {
+      display: inline-block;
+      padding: 14px 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.3s;
+      min-height: 44px;
+      min-width: 44px;
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
+      touch-action: manipulation;
+      font-size: 16px;
+    }
+    
+    .file-input-label:hover {
+      opacity: 0.9;
+    }
+    
+    .upload-status {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 5px;
+      font-weight: 600;
+    }
+    
+    .upload-status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .upload-status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .upload-status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    
+    /* Prevent iOS zoom on input focus */
+    input[type="file"] {
+      font-size: 16px;
+    }
+    
+    /* Smooth scrolling for iOS */
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Hide scrollbars on mobile for cleaner look */
+    @media (max-width: 768px) {
+      ::-webkit-scrollbar {
+        width: 0px;
+        height: 0px;
+      }
+    }
+    
+    .creator-badge {
+      font-size: 1.2em;
+      color: #667eea;
+      font-weight: 700;
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      margin: 0;
+      font-style: normal;
+    }
+    
+    @media (max-width: 768px) {
+      .creator-badge {
+        position: static;
+        font-size: 0.9em;
+        margin-top: 10px;
+        text-align: center;
+      }
+    }
+    
+    .privacy-disclaimer {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 8px;
+      font-size: 0.9em;
+    }
+    
+    .privacy-disclaimer h3 {
+      color: #856404;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+    }
+    
+    .privacy-disclaimer p {
+      color: #856404;
+      line-height: 1.6;
+      margin: 5px 0;
+    }
+    
+    footer {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      margin-top: 20px;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    footer p {
+      margin: 5px 0;
       color: #6c757d;
+      font-size: 0.9em;
+    }
+    
+    footer .designer {
+      font-weight: 600;
+      color: #667eea;
+      font-size: 1em;
     }
   </style>
 </head>
@@ -339,262 +603,250 @@
 
 <div class="container">
   <header>
-    <h1>📊 Advanced Portfolio Tracker</h1>
-    <div class="quick-stats" id="quickStats">
+    <h1>📊 Portfolio Analytics</h1>
+    <p class="creator-badge">Built and Designed by Nathene Stowe</p>
+    <p>Private & Secure - Your data never leaves your browser</p>
+    
+    <div class="stats-grid">
       <div class="stat-card">
-        <h3>Total Portfolio Value</h3>
-        <div class="value" id="totalValue">Loading...</div>
+        <h3>Total Equity</h3>
+        <div class="value" id="totalValue">$0.00</div>
       </div>
       <div class="stat-card">
         <h3>Total P&L</h3>
-        <div class="value" id="totalPnL">Loading...</div>
+        <div class="value" id="totalPnL">$0.00</div>
       </div>
       <div class="stat-card">
         <h3>Total ROI</h3>
-        <div class="value" id="totalROI">Loading...</div>
+        <div class="value" id="totalROI">0.00%</div>
       </div>
       <div class="stat-card">
-        <h3>Number of Holdings</h3>
+        <h3>Holdings</h3>
         <div class="value" id="numHoldings">0</div>
       </div>
     </div>
   </header>
+  
+  <div class="privacy-disclaimer">
+    <h3>🔒 Your Privacy is Our Priority</h3>
+    <p><strong>100% Private & Secure:</strong> All your portfolio data is processed entirely within your web browser using JavaScript. No information is ever transmitted to any server, stored in any database, or shared with anyone.</p>
+    <p><strong>Automatic Data Deletion:</strong> When you close this page or refresh your browser, all uploaded data is immediately and permanently deleted from your device's memory. Nothing is saved.</p>
+    <p><strong>Zero Tracking:</strong> We do not collect, store, or analyze any personal information, financial data, or browsing behavior.</p>
+  </div>
+  
+  <div class="upload-section">
+    <h2>📂 Upload Your Portfolio CSV</h2>
+    <p style="margin-bottom: 15px;">Your CSV file is processed entirely in your browser - no data is sent to any server.</p>
+    <div class="file-input-wrapper">
+      <input type="file" id="csvFileInput" accept=".csv,text/csv,application/csv,text/comma-separated-values" onchange="handleFileUpload(event)">
+      <label for="csvFileInput" class="file-input-label">📁 Choose CSV File</label>
+    </div>
+    <div id="uploadStatus" class="upload-status info">No file selected. Please upload your portfolio CSV to begin.</div>
+  </div>
 
   <div class="tabs">
-    <button class="tab-button active" onclick="switchTab('overview')">📈 Overview</button>
-    <button class="tab-button" onclick="switchTab('analytics')">🎯 Analytics</button>
-    <button class="tab-button" onclick="switchTab('comparison')">📊 Comparison</button>
-    <button class="tab-button" onclick="switchTab('daterange')">📅 Date Range</button>
-    <button class="tab-button" onclick="switchTab('lending')">💰 Stock Lending</button>
-    <button class="tab-button" onclick="switchTab('nontrade')">💵 Non-Trade</button>
-    <button class="tab-button" onclick="switchTab('export')">💾 Export & Reports</button>
+    <button class="tab-button active" onclick="switchTab('overview')">📈 Holdings</button>
+    <button class="tab-button" onclick="switchTab('sectors')">🥧 Sectors</button>
+    <button class="tab-button" onclick="switchTab('performance')">🎯 Performance</button>
+    <button class="tab-button" onclick="switchTab('comparison')">⚖️ Compare</button>
   </div>
 
-  <!-- OVERVIEW TAB -->
   <div id="overview" class="tab-content active">
     <div class="panel">
-      <h2>Portfolio Holdings</h2>
-      <div class="holdings-grid" id="holdingsGrid">Loading...</div>
+      <h2>Current Holdings</h2>
+      <div id="holdingsTable">
+        <div class="loading"> Loading portfolio data...</div>
+      </div>
     </div>
   </div>
 
-  <!-- ANALYTICS TAB -->
-  <div id="analytics" class="tab-content">
-    <div class="panel">
-      <h2>Performance Metrics</h2>
-      <div class="metric-grid" id="performanceMetrics">Loading...</div>
-    </div>
-
+  <div id="sectors" class="tab-content">
     <div class="panel">
       <h2>Sector Allocation</h2>
-      <div class="chart-container">
-        <canvas id="sectorChart"></canvas>
-      </div>
-      <div class="sector-grid" id="sectorList"></div>
-    </div>
-
-    <div class="panel">
-      <h2>🏆 Best Performers</h2>
-      <div id="bestPerformers"></div>
-    </div>
-
-    <div class="panel">
-      <h2>📉 Worst Performers</h2>
-      <div id="worstPerformers"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Monthly Performance</h2>
-      <select id="yearSelector" onchange="loadMonthlyBreakdown()">
-        <option value="2025" selected>2025</option>
-        <option value="2026">2026</option>
-        <option value="2024">2024</option>
-        <option value="2023">2023</option>
-      </select>
-      <div class="chart-container">
-        <canvas id="monthlyChart"></canvas>
+      <div id="sectorsTable">
+        <div class="loading"> Loading sector data...</div>
       </div>
     </div>
   </div>
 
-  <!-- COMPARISON TAB -->
+  <div id="performance" class="tab-content">
+    <div class="panel">
+      <h2>Best Performers</h2>
+       <div id="bestPerformers">
+        <div class="loading"> Loading...</div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Worst Performers</h2>
+      <div id="worstPerformers">
+        <div class="loading"> Loading...</div>
+      </div>
+    </div>
+  </div>
+
   <div id="comparison" class="tab-content">
     <div class="panel">
-      <div class="controls">
-        <h3>Select Stocks to Compare</h3>
-        <div class="checkbox-grid" id="symbolCheckboxes">Loading...</div>
-        <div style="margin-top: 15px;">
-          <button onclick="loadComparisonCharts()">Load Charts</button>
-          <select id="rangeSelector">
-            <option value="1m">1 Month</option>
-            <option value="3m">3 Months</option>
-            <option value="1y" selected>1 Year</option>
-            <option value="5y">5 Years</option>
-          </select>
+      <h2>Stock Comparison Analysis</h2>
+      <p style="margin-bottom: 15px;">Select stocks to compare performance:</p>
+      <div id="stockSelector" class="stock-selector"></div>
+      
+      <div style="margin: 20px 0;">
+        <strong>Time Period:</strong>
+        <div class="time-period-buttons">
+          <button class="time-btn" onclick="setTimePeriod('1M')">1 Month</button>
+          <button class="time-btn" onclick="setTimePeriod('3M')">3 Months</button>
+          <button class="time-btn" onclick="setTimePeriod('6M')">6 Months</button>
+          <button class="time-btn active" onclick="setTimePeriod('1Y')">1 Year</button>
+          <button class="time-btn" onclick="setTimePeriod('ALL')">All Time</button>
         </div>
       </div>
-    </div>
-
-    <div id="comparisonStats"></div>
-
-    <div class="panel">
-      <h2>Combined P&L Over Time</h2>
-      <div class="chart-container">
-        <canvas id="pnlChart"></canvas>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Stock Price Comparison</h2>
-      <div class="chart-container">
-        <canvas id="priceChart"></canvas>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Portfolio Value Over Time</h2>
-      <div class="chart-container">
-        <canvas id="valueChart"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- DATE RANGE TAB -->
-  <div id="daterange" class="tab-content">
-    <div class="panel">
-      <h2>Custom Date Range Analysis</h2>
-      <div class="date-picker-container">
-        <label>Select Stock: </label>
-        <select id="dateRangeSymbol"></select>
-        <br><br>
-        <label>Start Date: </label>
-        <input type="date" id="startDate" value="2025-01-01">
-        <label>End Date: </label>
-        <input type="date" id="endDate" value="2026-01-31">
-        <button onclick="loadDateRangeData()">Analyze</button>
-      </div>
-      <div class="chart-container">
-        <canvas id="dateRangeChart"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- STOCK LENDING TAB -->
-  <div id="lending" class="tab-content">
-    <div class="panel">
-      <h2>Stock Lending Income</h2>
-      <div class="stat-card" id="lendingSummary">
-        <h3>Total Lending Income</h3>
-        <div class="value" id="totalLendingIncome">Loading...</div>
-      </div>
-      <div style="margin-top: 20px;">
-        <table class="data-table" id="lendingTable">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Instrument</th>
-              <th>Description</th>
-              <th>Trans Code</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-          <tbody id="lendingTableBody">
-            <tr><td colspan="5">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- NON-TRADE TRANSACTIONS TAB -->
-  <div id="nontrade" class="tab-content">
-    <div class="panel">
-      <h2>Non-Trade Transactions</h2>
-      <div id="nonTradeSummary" class="metric-grid">Loading...</div>
-    </div>
-    
-    <div class="panel">
-      <h2>Transaction History</h2>
-      <table class="data-table" id="nonTradeTable">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Instrument</th>
-            <th>Description</th>
-            <th>Trans Code</th>
-            <th>Quantity</th>
-            <th>Price</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody id="nonTradeTableBody">
-          <tr><td colspan="7">Loading...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- EXPORT TAB -->
-  <div id="export" class="tab-content">
-    <div class="panel">
-      <h2>Export Portfolio Data</h2>
-      <div class="export-buttons">
-        <button onclick="exportCSV()">📄 Download CSV</button>
-        <button onclick="downloadChartImage('pnlChart', 'pnl-chart')">📸 Download P&L Chart</button>
-        <button onclick="downloadChartImage('sectorChart', 'sector-chart')">🥧 Download Sector Chart</button>
-        <button onclick="exportSummary()">📊 Full Summary Report</button>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Portfolio Summary Report</h2>
-      <div id="summaryReport">Click "Full Summary Report" to generate</div>
+      
+      <button onclick="compareSelected()">Compare Selected</button>
+      <button onclick="clearComparison()" style="background: #6c757d;">Clear</button>
+      <div id="comparisonResults" class="comparison-grid"></div>
     </div>
   </div>
 
 </div>
 
+<footer>
+  <p class="designer">Web Designer: Nathene Stowe</p>
+  <p>© 2026 Portfolio Analytics | Privacy-Focused Financial Tools</p>
+</footer>
+
 <script>
   const API_BASE = 'http://localhost:8000';
+  let portfolioData = null;
+  let selectedStocks = new Set();
+  let timePeriod = '1Y';
+  let csvData = [];
+  let dividendData = {};
+  let uploadedCSVContent = null;
   
-  // Chart instances
-  let charts = {
-    sector: null,
-    pnl: null,
-    price: null,
-    value: null,
-    monthly: null,
-    dateRange: null
-  };
+  function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const statusEl = document.getElementById('uploadStatus');
+    statusEl.textContent = 'Processing CSV file...';
+    statusEl.className = 'upload-status info';
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        uploadedCSVContent = e.target.result;
+        parseUploadedCSV(uploadedCSVContent);
+        statusEl.textContent = `✅ Success! Loaded ${csvData.length} transactions. Data processed locally in your browser.`;
+        statusEl.className = 'upload-status success';
+        
+        // Auto-load overview
+        loadOverview();
+      } catch (error) {
+        console.error('Error parsing CSV:', error);
+        statusEl.textContent = `❌ Error: ${error.message}. Please check your CSV format.`;
+        statusEl.className = 'upload-status error';
+      }
+    };
+    reader.onerror = function() {
+      statusEl.textContent = '❌ Error reading file. Please try again.';
+      statusEl.className = 'upload-status error';
+    };
+    reader.readAsText(file);
+  }
   
-  const CHART_COLORS = [
-    'rgb(75, 192, 192)', 'rgb(255, 99, 132)', 'rgb(54, 162, 235)',
-    'rgb(255, 205, 86)', 'rgb(153, 102, 255)', 'rgb(255, 159, 64)',
-    'rgb(201, 203, 207)', 'rgb(100, 181, 246)', 'rgb(129, 199, 132)',
-    'rgb(255, 138, 101)', 'rgb(171, 71, 188)', 'rgb(255, 213, 79)'
-  ];
+  function parseUploadedCSV(text) {
+    csvData = [];
+    dividendData = {};
+    
+    const lines = text.split('\n');
+    if (lines.length < 2) throw new Error('CSV file is empty or invalid');
+    
+    const headers = lines[0].split(',').map(h => h.trim());
+    
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      
+      // Handle quoted fields properly
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let j = 0; j < lines[i].length; j++) {
+        const char = lines[i][j];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim());
+      
+      if (values.length < 7) continue;
+      
+      const row = {
+        date: values[0].replace(/"/g, ''),
+        symbol: values[1].replace(/"/g, ''),
+        description: values[2].replace(/"/g, ''),
+        transCode: values[3].replace(/"/g, ''),
+        quantity: values[4].replace(/"/g, ''),
+        price: values[5].replace(/"/g, ''),
+        amount: values[6].replace(/"/g, '')
+      };
+      csvData.push(row);
+      
+      // Extract dividends
+      if (row.description && row.description.toLowerCase().includes('dividend')) {
+        const symbol = row.symbol.trim();
+        if (!dividendData[symbol]) {
+          dividendData[symbol] = [];
+        }
+        
+        const amountStr = row.amount.replace(/[$(),]/g, '').trim();
+        const amount = Math.abs(parseFloat(amountStr) || 0);
+        
+        if (amount > 0) {
+          dividendData[symbol].push({
+            date: row.date,
+            amount: amount
+          });
+        }
+      }
+    }
+    
+    if (csvData.length === 0) {
+      throw new Error('No valid transactions found in CSV');
+    }
+  }
 
-  // Tab switching
   function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
     document.getElementById(tabName).classList.add('active');
     event.target.classList.add('active');
     
-    // Load data for specific tabs
-    if (tabName === 'analytics') loadAnalytics();
-    if (tabName === 'daterange') loadDateRangeSymbols();
-    if (tabName === 'lending') loadLendingData();
-    if (tabName === 'nontrade') loadNonTradeData();
+    if (tabName === 'sectors') loadSectors();
+    else if (tabName === 'performance') loadPerformance();
+    else if (tabName === 'comparison') loadComparison();
   }
 
-  // Load initial data
   async function loadOverview() {
+    if (!uploadedCSVContent) {
+      document.getElementById('holdingsTable').innerHTML = '<div class="error">Please upload your portfolio CSV file first.</div>';
+      return;
+    }
+    
     try {
       const response = await fetch(`${API_BASE}/analytics/overview`);
       const data = await response.json();
       
-      // Update quick stats
+      if (data.error) {
+        document.getElementById('holdingsTable').innerHTML = `<div class="error">${data.error}</div>`;
+        return;
+      }
+      
       document.getElementById('totalValue').textContent = '$' + data.total_equity.toLocaleString();
       document.getElementById('totalPnL').textContent = (data.total_pnl >= 0 ? '+' : '') + '$' + data.total_pnl.toLocaleString();
       document.getElementById('totalPnL').className = 'value ' + (data.total_pnl >= 0 ? 'positive' : 'negative');
@@ -602,722 +854,332 @@
       document.getElementById('totalROI').className = 'value ' + (data.total_roi >= 0 ? 'positive' : 'negative');
       document.getElementById('numHoldings').textContent = data.holdings.length;
       
-      // Display holdings
-      const grid = document.getElementById('holdingsGrid');
-      grid.innerHTML = data.holdings.map(h => `
-        <div class="holding-card">
-          <h4>${h.symbol}</h4>
-          <div class="holding-stat">
-            <span>Shares:</span>
-            <strong>${h.shares.toFixed(2)}</strong>
-          </div>
-          <div class="holding-stat">
-            <span>Avg Cost:</span>
-            <strong>$${h.avg_cost.toFixed(2)}</strong>
-          </div>
-          <div class="holding-stat">
-            <span>Current:</span>
-            <strong>$${h.current_price.toFixed(2)}</strong>
-          </div>
-          <div class="holding-stat">
-            <span>Equity:</span>
-            <strong>$${h.equity.toLocaleString()}</strong>
-          </div>
-          <div class="holding-stat">
-            <span>P&L:</span>
-            <strong class="${h.pnl >= 0 ? 'positive' : 'negative'}">
-              ${h.pnl >= 0 ? '+' : ''}$${h.pnl.toLocaleString()}
-            </strong>
-          </div>
-          <div class="holding-stat">
-            <span>ROI:</span>
-            <strong class="${h.roi >= 0 ? 'positive' : 'negative'}">
-              ${h.roi >= 0 ? '+' : ''}${h.roi.toFixed(2)}%
-            </strong>
-          </div>
-          <div class="holding-stat">
-            <span>Allocation:</span>
-            <strong>${h.allocation.toFixed(2)}%</strong>
-          </div>
-          <div class="holding-stat">
-            <span>Sector:</span>
-            <em>${h.sector}</em>
-          </div>
-        </div>
-      `).join('');
+      portfolioData = data;
+      
+      let html = '<table><thead><tr>';
+      html += '<th>Symbol</th><th>Shares</th><th>Avg Cost</th><th>Current Price</th><th>Equity</th><th>P&L</th><th>ROI</th><th>Allocation</th><th>Sector</th>';
+      html += '</tr></thead><tbody>';
+      
+      data.holdings.forEach(h => {
+        const pnlClass = h.pnl >= 0 ? 'positive' : 'negative';
+        const roiClass = h.roi >= 0 ? 'positive' : 'negative';
+        html += `<tr>
+          <td><strong>${h.symbol}</strong></td>
+          <td>${h.shares.toFixed(2)}</td>
+          <td>$${h.avg_cost.toFixed(2)}</td>
+          <td>$${h.current_price.toFixed(2)}</td>
+          <td><strong>$${h.equity.toFixed(2)}</strong></td>
+          <td class="${pnlClass}">${h.pnl >= 0 ? '+' : ''}$${h.pnl.toFixed(2)}</td>
+          <td class="${roiClass}">${h.roi >= 0 ? '+' : ''}${h.roi.toFixed(2)}%</td>
+          <td>${h.allocation.toFixed(2)}%</td>
+          <td>${h.sector}</td>
+        </tr>`;
+      });
+      
+      html += '</tbody></table>';
+      document.getElementById('holdingsTable').innerHTML = html;
       
     } catch (error) {
       console.error('Error loading overview:', error);
+      document.getElementById('holdingsTable').innerHTML = '<div class="error">Error loading data</div>';
     }
   }
 
-  async function loadAnalytics() {
-    await loadPerformanceMetrics();
-    await loadSectorAllocation();
-    await loadBestWorstPerformers();
-    await loadMonthlyBreakdown();
-  }
-
-  async function loadPerformanceMetrics() {
-    try {
-      const response = await fetch(`${API_BASE}/analytics/performance`);
-      const data = await response.json();
-      
-      const metricsHTML = `
-        <div class="metric-box">
-          <h4>Annual Return</h4>
-          <div class="value ${data.annual_return >= 0 ? 'positive' : 'negative'}">
-            ${data.annual_return >= 0 ? '+' : ''}${data.annual_return.toFixed(2)}%
-          </div>
-        </div>
-        <div class="metric-box">
-          <h4>Volatility</h4>
-          <div class="value">${data.volatility.toFixed(2)}%</div>
-        </div>
-        <div class="metric-box">
-          <h4>Sharpe Ratio</h4>
-          <div class="value">${data.sharpe_ratio.toFixed(2)}</div>
-        </div>
-        ${data.spy_return ? `
-        <div class="metric-box">
-          <h4>S&P 500 Return</h4>
-          <div class="value">${data.spy_return >= 0 ? '+' : ''}${data.spy_return.toFixed(2)}%</div>
-        </div>
-        <div class="metric-box">
-          <h4>Outperformance</h4>
-          <div class="value ${data.outperformance >= 0 ? 'positive' : 'negative'}">
-            ${data.outperformance >= 0 ? '+' : ''}${data.outperformance.toFixed(2)}%
-          </div>
-        </div>
-        ` : ''}
-        ${data.beta ? `
-        <div class="metric-box">
-          <h4>Beta</h4>
-          <div class="value">${data.beta.toFixed(2)}</div>
-        </div>
-        ` : ''}
-      `;
-      
-      document.getElementById('performanceMetrics').innerHTML = metricsHTML;
-    } catch (error) {
-      console.error('Error loading performance metrics:', error);
-    }
-  }
-
-  async function loadSectorAllocation() {
-    try {
-      const response = await fetch(`${API_BASE}/analytics/sectors`);
-      const data = await response.json();
-      
-      // Display sector list
-      const sectorList = document.getElementById('sectorList');
-      sectorList.innerHTML = data.sectors.map(s => `
-        <div class="sector-item">
-          <h4>${s.sector}</h4>
-          <div><strong>$${s.value.toLocaleString()}</strong></div>
-          <div>${s.percentage.toFixed(1)}%</div>
-        </div>
-      `).join('');
-      
-      // Draw pie chart
-      const ctx = document.getElementById('sectorChart').getContext('2d');
-      if (charts.sector) charts.sector.destroy();
-      
-      charts.sector = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: data.sectors.map(s => s.sector),
-          datasets: [{
-            data: data.sectors.map(s => s.value),
-            backgroundColor: CHART_COLORS
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'right' },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  const label = context.label || '';
-                  const value = context.parsed || 0;
-                  const percentage = data.sectors[context.dataIndex].percentage;
-                  return `${label}: $${value.toLocaleString()} (${percentage.toFixed(1)}%)`;
-                }
-              }
-            }
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error loading sector allocation:', error);
-    }
-  }
-
-  async function loadBestWorstPerformers() {
-    try {
-      const response = await fetch(`${API_BASE}/analytics/best_worst`);
-      const data = await response.json();
-      
-      document.getElementById('bestPerformers').innerHTML = data.best.map(p => `
-        <div class="performer-card">
-          <div>
-            <strong>${p.symbol}</strong>
-            <div>$${p.avg_cost.toFixed(2)} → $${p.current_price.toFixed(2)}</div>
-          </div>
-          <div style="text-align: right;">
-            <div class="positive" style="font-size: 1.5em;">+${p.roi.toFixed(2)}%</div>
-            <div class="positive">+$${p.pnl.toLocaleString()}</div>
-          </div>
-        </div>
-      `).join('');
-      
-      document.getElementById('worstPerformers').innerHTML = data.worst.map(p => `
-        <div class="performer-card">
-          <div>
-            <strong>${p.symbol}</strong>
-            <div>$${p.avg_cost.toFixed(2)} → $${p.current_price.toFixed(2)}</div>
-          </div>
-          <div style="text-align: right;">
-            <div class="negative" style="font-size: 1.5em;">${p.roi.toFixed(2)}%</div>
-            <div class="negative">$${p.pnl.toLocaleString()}</div>
-          </div>
-        </div>
-      `).join('');
-    } catch (error) {
-      console.error('Error loading best/worst performers:', error);
-    }
-  }
-
-  async function loadMonthlyBreakdown() {
-    const yearSelector = document.getElementById('yearSelector');
-    const year = yearSelector ? yearSelector.value : 2025; // Default to 2025 if selector not found
-    try {
-      const response = await fetch(`${API_BASE}/analytics/monthly_breakdown?year=${year}`);
-      const data = await response.json();
-      
-      const ctx = document.getElementById('monthlyChart').getContext('2d');
-      if (charts.monthly) charts.monthly.destroy();
-      
-      charts.monthly = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: data.months.map(m => m.month_name),
-          datasets: [{
-            label: 'Monthly P&L',
-            data: data.months.map(m => m.pnl),
-            backgroundColor: data.months.map(m => m.pnl >= 0 ? 'rgba(40, 167, 69, 0.7)' : 'rgba(220, 53, 69, 0.7)'),
-            borderColor: data.months.map(m => m.pnl >= 0 ? 'rgb(40, 167, 69)' : 'rgb(220, 53, 69)'),
-            borderWidth: 2,
-            borderRadius: 5,
-            yAxisID: 'y1'
-          }, {
-            label: 'Portfolio Value',
-            data: data.months.map(m => m.value),
-            type: 'line',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            borderColor: 'rgb(75, 192, 192)',
-            borderWidth: 3,
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            pointBackgroundColor: 'rgb(75, 192, 192)',
-            fill: false,
-            yAxisID: 'y',
-            tension: 0.4
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
-          plugins: {
-            legend: {
-              display: true,
-              position: 'top'
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  const label = context.dataset.label || '';
-                  const value = context.parsed.y;
-                  return label + ': $' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                }
-              }
-            }
-          },
-          scales: {
-            y: {
-              type: 'linear',
-              position: 'left',
-              title: {
-                display: true,
-                text: 'Portfolio Value ($)'
-              },
-              ticks: {
-                callback: value => '$' + value.toLocaleString()
-              },
-              grid: {
-                color: 'rgba(0, 0, 0, 0.05)'
-              }
-            },
-            y1: {
-              type: 'linear',
-              position: 'right',
-              title: {
-                display: true,
-                text: 'P&L ($)'
-              },
-              ticks: {
-                callback: value => '$' + value.toLocaleString()
-              },
-              grid: {
-                drawOnChartArea: false
-              }
-            },
-            x: {
-              grid: {
-                display: false
-              }
-            }
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error loading monthly breakdown:', error);
-    }
-  }
-
-  // Load symbols for comparison and date range
-  async function loadSymbolsForComparison() {
-    try {
-      const response = await fetch(`${API_BASE}/symbols`);
-      const data = await response.json();
-      
-      const container = document.getElementById('symbolCheckboxes');
-      container.innerHTML = data.symbols.map(s => `
-        <label class="checkbox-label">
-          <input type="checkbox" name="stock" value="${s}">
-          <span>${s}</span>
-        </label>
-      `).join('');
-    } catch (error) {
-      console.error('Error loading symbols:', error);
-    }
-  }
-
-  async function loadDateRangeSymbols() {
-    try {
-      const response = await fetch(`${API_BASE}/symbols`);
-      const data = await response.json();
-      
-      const select = document.getElementById('dateRangeSymbol');
-      select.innerHTML = data.symbols.map(s => `<option value="${s}">${s}</option>`).join('');
-    } catch (error) {
-      console.error('Error loading symbols:', error);
-    }
-  }
-
-  async function loadComparisonCharts() {
-    const selectedStocks = Array.from(document.querySelectorAll('input[name="stock"]:checked')).map(cb => cb.value);
-    const range = document.getElementById('rangeSelector').value;
-    
-    if (selectedStocks.length === 0) {
-      alert('Please select at least one stock');
+  async function loadSectors() {
+    if (!uploadedCSVContent) {
+      document.getElementById('sectorsTable').innerHTML = '<div class="error">Please upload your portfolio CSV file first.</div>';
       return;
     }
     
     try {
-      const promises = selectedStocks.map(async symbol => {
-        const [statsRes, timeseriesRes] = await Promise.all([
-          fetch(`${API_BASE}/portfolio/${symbol}`),
-          fetch(`${API_BASE}/portfolio_timeseries/${symbol}?range=${range}`)
-        ]);
-        return {
-          symbol,
-          stats: await statsRes.json(),
-          timeseries: await timeseriesRes.json()
-        };
-      });
-      
-      const results = await Promise.all(promises);
-      
-      // Display stats
-      displayComparisonStats(results);
-      
-      // Draw charts
-      drawPnLChart(results);
-      drawPriceChart(results);
-      drawValueChart(results);
-      
-    } catch (error) {
-      console.error('Error loading comparison data:', error);
-    }
-  }
-
-  function displayComparisonStats(results) {
-    let totalEquity = 0;
-    let totalPnL = 0;
-    let statsHTML = '<div class="panel"><h2>Selected Holdings</h2><div class="holdings-grid">';
-    
-    results.forEach(({symbol, stats}) => {
-      if (!stats.error) {
-        totalEquity += stats.equity;
-        totalPnL += stats.pnl;
-        
-        statsHTML += `
-          <div class="holding-card">
-            <h4>${stats.symbol}</h4>
-            <div class="holding-stat"><span>Shares:</span><strong>${stats.total_shares}</strong></div>
-            <div class="holding-stat"><span>Avg Cost:</span><strong>$${stats.avg_cost}</strong></div>
-            <div class="holding-stat"><span>Current:</span><strong>$${stats.current_price}</strong></div>
-            <div class="holding-stat"><span>Equity:</span><strong>$${stats.equity.toLocaleString()}</strong></div>
-            <div class="holding-stat">
-              <span>P&L:</span>
-              <strong class="${stats.pnl >= 0 ? 'positive' : 'negative'}">
-                ${stats.pnl >= 0 ? '+' : ''}$${stats.pnl.toLocaleString()}
-              </strong>
-            </div>
-            <div class="holding-stat">
-              <span>ROI:</span>
-              <strong class="${stats.roi_percent >= 0 ? 'positive' : 'negative'}">
-                ${stats.roi_percent >= 0 ? '+' : ''}${stats.roi_percent}%
-              </strong>
-            </div>
-          </div>
-        `;
-      }
-    });
-    
-    statsHTML += `</div>
-      <div style="margin-top: 20px; padding: 20px; background: #e3f2fd; border-radius: 10px;">
-        <h3>Combined Total</h3>
-        <div style="display: flex; gap: 30px; font-size: 1.2em; margin-top: 10px;">
-          <div><strong>Total Equity:</strong> $${totalEquity.toLocaleString()}</div>
-          <div class="${totalPnL >= 0 ? 'positive' : 'negative'}">
-            <strong>Total P&L:</strong> ${totalPnL >= 0 ? '+' : ''}$${totalPnL.toLocaleString()}
-          </div>
-        </div>
-      </div></div>
-    `;
-    
-    document.getElementById('comparisonStats').innerHTML = statsHTML;
-  }
-
-  function drawPnLChart(results) {
-    const ctx = document.getElementById('pnlChart').getContext('2d');
-    if (charts.pnl) charts.pnl.destroy();
-    
-    const datasets = results.map((result, index) => {
-      const data = result.timeseries;
-      if (!data || data.error) return null;
-      
-      return {
-        label: `${result.symbol} P&L`,
-        data: data.map(d => ({ x: new Date(d.Date), y: d.pnl })),
-        borderColor: CHART_COLORS[index % CHART_COLORS.length],
-        backgroundColor: CHART_COLORS[index % CHART_COLORS.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
-        tension: 0.3,
-        fill: false
-      };
-    }).filter(d => d !== null);
-    
-    charts.pnl = new Chart(ctx, {
-      type: 'line',
-      data: { datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top' }
-        },
-        scales: {
-          x: { type: 'time' },
-          y: {
-            ticks: {
-              callback: value => '$' + value.toLocaleString()
-            }
-          }
-        }
-      }
-    });
-  }
-
-  function drawPriceChart(results) {
-    const ctx = document.getElementById('priceChart').getContext('2d');
-    if (charts.price) charts.price.destroy();
-    
-    const datasets = results.map((result, index) => {
-      const data = result.timeseries;
-      if (!data || data.error) return null;
-      
-      return {
-        label: `${result.symbol}`,
-        data: data.map(d => ({ x: new Date(d.Date), y: d.Close })),
-        borderColor: CHART_COLORS[index % CHART_COLORS.length],
-        tension: 0.3,
-        fill: false
-      };
-    }).filter(d => d !== null);
-    
-    charts.price = new Chart(ctx, {
-      type: 'line',
-      data: { datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top' }
-        },
-        scales: {
-          x: { type: 'time' },
-          y: {
-            ticks: {
-              callback: value => '$' + value.toFixed(2)
-            }
-          }
-        }
-      }
-    });
-  }
-
-  function drawValueChart(results) {
-    const ctx = document.getElementById('valueChart').getContext('2d');
-    if (charts.value) charts.value.destroy();
-    
-    const datasets = results.map((result, index) => {
-      const data = result.timeseries;
-      if (!data || data.error) return null;
-      
-      return {
-        label: `${result.symbol}`,
-        data: data.map(d => ({ x: new Date(d.Date), y: d.equity })),
-        borderColor: CHART_COLORS[index % CHART_COLORS.length],
-        backgroundColor: CHART_COLORS[index % CHART_COLORS.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
-        tension: 0.3,
-        fill: true
-      };
-    }).filter(d => d !== null);
-    
-    charts.value = new Chart(ctx, {
-      type: 'line',
-      data: { datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top' }
-        },
-        scales: {
-          x: { type: 'time' },
-          y: {
-            stacked: false,
-            ticks: {
-              callback: value => '$' + value.toLocaleString()
-            }
-          }
-        }
-      }
-    });
-  }
-
-  async function loadDateRangeData() {
-    const symbol = document.getElementById('dateRangeSymbol').value;
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
-    
-    try {
-      const response = await fetch(`${API_BASE}/analytics/date_range?symbol=${symbol}&start_date=${startDate}&end_date=${endDate}`);
-      const result = await response.json();
-      
-      const ctx = document.getElementById('dateRangeChart').getContext('2d');
-      if (charts.dateRange) charts.dateRange.destroy();
-      
-      charts.dateRange = new Chart(ctx, {
-        type: 'line',
-        data: {
-          datasets: [{
-            label: `${symbol} Price`,
-            data: result.data.map(d => ({ x: new Date(d.Date), y: d.Close })),
-            borderColor: 'rgb(75, 192, 192)',
-            yAxisID: 'y'
-          }, {
-            label: 'Portfolio Value',
-            data: result.data.map(d => ({ x: new Date(d.Date), y: d.equity })),
-            borderColor: 'rgb(54, 162, 235)',
-            yAxisID: 'y1'
-          }, {
-            label: 'P&L',
-            data: result.data.map(d => ({ x: new Date(d.Date), y: d.pnl })),
-            borderColor: 'rgb(255, 99, 132)',
-            yAxisID: 'y1'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: { type: 'time' },
-            y: {
-              position: 'left',
-              ticks: { callback: value => '$' + value.toFixed(2) }
-            },
-            y1: {
-              position: 'right',
-              grid: { drawOnChartArea: false },
-              ticks: { callback: value => '$' + value.toLocaleString() }
-            }
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error loading date range data:', error);
-    }
-  }
-
-  // Export functions
-  function exportCSV() {
-    window.open(`${API_BASE}/export/csv`, '_blank');
-  }
-
-  function downloadChartImage(chartId, filename) {
-    const canvas = document.getElementById(chartId);
-    const url = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `${filename}.png`;
-    link.href = url;
-    link.click();
-  }
-
-  async function exportSummary() {
-    try {
-      const response = await fetch(`${API_BASE}/export/summary`);
+      const response = await fetch(`${API_BASE}/analytics/sectors`);
       const data = await response.json();
       
-      const summaryHTML = `
-        <h3>Portfolio Summary Report</h3>
-        <p><strong>Generated:</strong> ${new Date(data.generated_at).toLocaleString()}</p>
-        
-        <h4>Overview</h4>
-        <p><strong>Total Equity:</strong> $${data.overview.total_equity.toLocaleString()}</p>
-        <p><strong>Total P&L:</strong> $${data.overview.total_pnl.toLocaleString()}</p>
-        <p><strong>Total ROI:</strong> ${data.overview.total_roi.toFixed(2)}%</p>
-        <p><strong>Holdings:</strong> ${data.overview.holdings.length}</p>
-        
-        <h4>Sector Allocation</h4>
-        ${data.sectors.sectors.map(s => `<p>${s.sector}: $${s.value.toLocaleString()} (${s.percentage}%)</p>`).join('')}
-        
-        <h4>Top 5 Performers</h4>
-        ${data.top_performers.map(p => `<p>${p.symbol}: ${p.roi.toFixed(2)}% ($${p.pnl.toLocaleString()})</p>`).join('')}
-        
-        <h4>Performance Metrics</h4>
-        <p><strong>Annual Return:</strong> ${data.performance.annual_return}%</p>
-        <p><strong>Volatility:</strong> ${data.performance.volatility}%</p>
-        <p><strong>Sharpe Ratio:</strong> ${data.performance.sharpe_ratio}</p>
-        ${data.performance.outperformance ? `<p><strong>vs S&P 500:</strong> ${data.performance.outperformance}%</p>` : ''}
+      let html = '<table><thead><tr><th>Sector</th><th>Value</th><th>Percentage</th></tr></thead><tbody>';
+      
+      data.sectors.forEach(s => {
+        html += `<tr>
+          <td><strong>${s.sector}</strong></td>
+          <td>$${s.value.toFixed(2)}</td>
+          <td>${s.percentage.toFixed(2)}%</td>
+        </tr>`;
+      });
+      
+      html += '</tbody></table>';
+      document.getElementById('sectorsTable').innerHTML = html;
+      
+    } catch (error) {
+      console.error('Error loading sectors:', error);
+      document.getElementById('sectorsTable').innerHTML = '<div class="error">Error loading data</div>';
+    }
+  }
+
+  async function loadPerformance() {
+    if (!uploadedCSVContent) {
+      document.getElementById('bestPerformers').innerHTML = '<div class="error">Please upload your portfolio CSV file first.</div>';
+      document.getElementById('worstPerformers').innerHTML = '<div class="error">Please upload your portfolio CSV file first.</div>';
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE}/analytics/best_worst`);
+      const data = await response.json();
+      
+      let bestHtml = '<table><thead><tr><th>Symbol</th><th>Current Price</th><th>Avg Cost</th><th>ROI</th><th>P&L</th></tr></thead><tbody>';
+      data.best.forEach(p => {
+        bestHtml += `<tr>
+          <td><strong>${p.symbol}</strong></td>
+          <td>$${p.current_price.toFixed(2)}</td>
+          <td>$${p.avg_cost.toFixed(2)}</td>
+          <td class="positive">+${p.roi.toFixed(2)}%</td>
+          <td class="positive">+$${p.pnl.toFixed(2)}</td>
+        </tr>`;
+      });
+      bestHtml += '</tbody></table>';
+      document.getElementById('bestPerformers').innerHTML = bestHtml;
+      
+      let worstHtml = '<table><thead><tr><th>Symbol</th><th>Current Price</th><th>Avg Cost</th><th>ROI</th><th>P&L</th></tr></thead><tbody>';
+      data.worst.forEach(p => {
+        worstHtml += `<tr>
+          <td><strong>${p.symbol}</strong></td>
+          <td>$${p.current_price.toFixed(2)}</td>
+          <td>$${p.avg_cost.toFixed(2)}</td>
+          <td class="negative">${p.roi.toFixed(2)}%</td>
+          <td class="negative">$${p.pnl.toFixed(2)}</td>
+        </tr>`;
+      });
+      worstHtml += '</tbody></table>';
+      document.getElementById('worstPerformers').innerHTML = worstHtml;
+      
+    } catch (error) {
+      console.error('Error loading performance:', error);
+      document.getElementById('bestPerformers').innerHTML = '<div class="error">Error loading data</div>';
+      document.getElementById('worstPerformers').innerHTML = '<div class="error">Error loading data</div>';
+    }
+  }
+
+  async function loadCSVData() {
+    // CSV data is already loaded from file upload
+    if (csvData.length === 0 && !uploadedCSVContent) {
+      // Fallback: try to load from server if no upload yet
+      try {
+        const response = await fetch('portfolio_data.csv');
+        if (response.ok) {
+          const text = await response.text();
+          uploadedCSVContent = text;
+          parseUploadedCSV(text);
+        }
+      } catch (error) {
+        console.log('No server CSV available, waiting for user upload');
+      }
+    }
+  }
+  
+  async function loadComparison() {
+    if (!uploadedCSVContent) {
+      document.getElementById('stockSelector').innerHTML = '<div class="error">Please upload your portfolio CSV file first.</div>';
+      return;
+    }
+    
+    await loadCSVData();
+    
+    if (!portfolioData) {
+      const response = await fetch(`${API_BASE}/analytics/overview`);
+      portfolioData = await response.json();
+    }
+    
+    const selector = document.getElementById('stockSelector');
+    selector.innerHTML = '';
+    
+    portfolioData.holdings.forEach(h => {
+      const label = document.createElement('label');
+      label.className = 'stock-checkbox';
+      if (selectedStocks.has(h.symbol)) label.classList.add('checked');
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = h.symbol;
+      checkbox.checked = selectedStocks.has(h.symbol);
+      checkbox.onchange = (e) => toggleStock(e.target.value, e.target.checked, label);
+      
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(h.symbol));
+      selector.appendChild(label);
+    });
+  }
+  
+  function toggleStock(symbol, checked, label) {
+    if (checked) {
+      selectedStocks.add(symbol);
+      label.classList.add('checked');
+    } else {
+      selectedStocks.delete(symbol);
+      label.classList.remove('checked');
+    }
+  }
+  
+  function setTimePeriod(period) {
+    timePeriod = period;
+    document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    if (selectedStocks.size > 0) {
+      compareSelected();
+    }
+  }
+  
+  function getTransactionsInPeriod(symbol) {
+    if (csvData.length === 0) return [];
+    
+    const now = new Date();
+    let cutoffDate = new Date();
+    
+    switch(timePeriod) {
+      case '1M': cutoffDate.setMonth(now.getMonth() - 1); break;
+      case '3M': cutoffDate.setMonth(now.getMonth() - 3); break;
+      case '6M': cutoffDate.setMonth(now.getMonth() - 6); break;
+      case '1Y': cutoffDate.setFullYear(now.getFullYear() - 1); break;
+      case 'ALL': cutoffDate = new Date(0); break;
+    }
+    
+    return csvData.filter(row => {
+      if (row.symbol.replace(/"/g, '').trim() !== symbol) return false;
+      const rowDate = new Date(row.date);
+      return rowDate >= cutoffDate;
+    });
+  }
+  
+  function compareSelected() {
+    if (selectedStocks.size === 0) {
+      alert('Please select at least one stock to compare');
+      return;
+    }
+    
+    const results = document.getElementById('comparisonResults');
+    results.innerHTML = '';
+    
+    const selected = portfolioData.holdings.filter(h => selectedStocks.has(h.symbol));
+    selected.sort((a, b) => b.roi - a.roi);
+    
+    selected.forEach(stock => {
+      const card = document.createElement('div');
+      card.className = 'comparison-card selected';
+      
+      // Calculate dividends for this stock
+      const stockDividends = dividendData[stock.symbol] || [];
+      const totalDividends = stockDividends.reduce((sum, d) => sum + d.amount, 0);
+      
+      // Adjust P&L to include dividends
+      const adjustedPnL = stock.pnl + totalDividends;
+      const adjustedROI = stock.avg_cost > 0 ? ((adjustedPnL / (stock.shares * stock.avg_cost)) * 100) : 0;
+      
+      const roiClass = adjustedROI >= 0 ? 'positive' : 'negative';
+      const pnlClass = adjustedPnL >= 0 ? 'positive' : 'negative';
+      
+      // Get transactions in time period
+      const periodTransactions = getTransactionsInPeriod(stock.symbol);
+      
+      card.innerHTML = `
+        <h3>${stock.symbol}</h3>
+        <div style="font-size: 0.85em; color: #6c757d; margin-bottom: 10px;">
+          Period: ${timePeriod} | ${periodTransactions.length} transactions
+        </div>
+        <div class="metric">
+          <span class="metric-label">Current Price:</span>
+          <span><strong>$${stock.current_price.toFixed(2)}</strong></span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Avg Cost:</span>
+          <span>$${stock.avg_cost.toFixed(2)}</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Shares:</span>
+          <span>${stock.shares.toFixed(2)}</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Total Equity:</span>
+          <span><strong>$${stock.equity.toFixed(2)}</strong></span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">P&L (Trading):</span>
+          <span class="${stock.pnl >= 0 ? 'positive' : 'negative'}">${stock.pnl >= 0 ? '+' : ''}$${stock.pnl.toFixed(2)}</span>
+        </div>
+        ${totalDividends > 0 ? `
+        <div class="metric">
+          <span class="metric-label">Dividends Received:</span>
+          <span class="positive">+$${totalDividends.toFixed(2)}</span>
+        </div>
+        <div class="metric" style="border-top: 2px solid #667eea; padding-top: 8px; margin-top: 8px;">
+          <span class="metric-label"><strong>Total Gain (w/ Dividends):</strong></span>
+          <span class="${pnlClass}"><strong>${adjustedPnL >= 0 ? '+' : ''}$${adjustedPnL.toFixed(2)}</strong></span>
+        </div>
+        <div class="metric">
+          <span class="metric-label"><strong>Total ROI (w/ Dividends):</strong></span>
+          <span class="${roiClass}"><strong>${adjustedROI >= 0 ? '+' : ''}${adjustedROI.toFixed(2)}%</strong></span>
+        </div>
+        ` : `
+        <div class="metric">
+          <span class="metric-label">Total P&L:</span>
+          <span class="${pnlClass}"><strong>${stock.pnl >= 0 ? '+' : ''}$${stock.pnl.toFixed(2)}</strong></span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">ROI:</span>
+          <span class="${roiClass}"><strong>${stock.roi >= 0 ? '+' : ''}${stock.roi.toFixed(2)}%</strong></span>
+        </div>
+        `}
+        <div class="metric">
+          <span class="metric-label">Allocation:</span>
+          <span>${stock.allocation.toFixed(2)}%</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Sector:</span>
+          <span>${stock.sector}</span>
+        </div>
+        ${stockDividends.length > 0 ? `
+        <div class="dividend-section">
+          <strong>💰 Dividend History (${stockDividends.length} payments)</strong>
+          ${stockDividends.slice(0, 5).map(d => `
+            <div class="dividend-row">
+              <span>${d.date}</span>
+              <span>+$${d.amount.toFixed(2)}</span>
+            </div>
+          `).join('')}
+          ${stockDividends.length > 5 ? '<div style="text-align: center; font-size: 0.8em; margin-top: 5px;">... and ' + (stockDividends.length - 5) + ' more</div>' : ''}
+        </div>
+        ` : ''}
+        <div style="margin-top: 15px;">
+          <strong>${totalDividends > 0 ? 'Total ROI' : 'ROI'} Performance:</strong>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${Math.min(Math.abs(totalDividends > 0 ? adjustedROI : stock.roi), 100)}%; background: ${(totalDividends > 0 ? adjustedROI : stock.roi) >= 0 ? '#28a745' : '#dc3545'};">
+              ${(totalDividends > 0 ? adjustedROI : stock.roi).toFixed(1)}%
+            </div>
+          </div>
+        </div>
       `;
       
-      document.getElementById('summaryReport').innerHTML = summaryHTML;
-    } catch (error) {
-      console.error('Error generating summary:', error);
-    }
+      results.appendChild(card);
+    });
+  }
+  
+  function clearComparison() {
+    selectedStocks.clear();
+    document.getElementById('comparisonResults').innerHTML = '';
+    document.querySelectorAll('.stock-checkbox').forEach(el => {
+      el.classList.remove('checked');
+      el.querySelector('input').checked = false;
+    });
   }
 
-  // ========== STOCK LENDING TAB ==========
-  async function loadLendingData() {
-    try {
-      // Load summary
-      const summaryRes = await fetch(`${API_BASE}/lending/summary`);
-      const summary = await summaryRes.json();
-      
-      document.getElementById('totalLendingIncome').textContent = 
-        `$${summary.total_income?.toLocaleString() || '0.00'}`;
-      
-      // Load transactions
-      const transRes = await fetch(`${API_BASE}/lending/transactions`);
-      const trans = await transRes.json();
-      
-      const tbody = document.getElementById('lendingTableBody');
-      if (trans.total === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No stock lending transactions found</td></tr>';
-      } else {
-        tbody.innerHTML = trans.transactions.map(t => `
-          <tr>
-            <td>${t.date || 'N/A'}</td>
-            <td>${t.Instrument || ''}</td>
-            <td>${t.Description || ''}</td>
-            <td>${t['Trans Code'] || ''}</td>
-            <td style="color: ${parseFloat(String(t.Amount || '0').replace(/[^0-9.-]/g, '')) >= 0 ? 'green' : 'red'}">
-              ${t.Amount || '$0.00'}
-            </td>
-          </tr>
-        `).join('');
-      }
-    } catch (error) {
-      console.error('Error loading lending data:', error);
-      document.getElementById('lendingTableBody').innerHTML = 
-        '<tr><td colspan="5" style="text-align:center;color:red;">Error loading data</td></tr>';
-    }
-  }
-
-  // ========== NON-TRADE TRANSACTIONS TAB ==========
-  async function loadNonTradeData() {
-    try {
-      // Load summary
-      const summaryRes = await fetch(`${API_BASE}/nontrade/summary`);
-      const summary = await summaryRes.json();
-      
-      const summaryDiv = document.getElementById('nonTradeSummary');
-      if (summary.summary && summary.summary.length > 0) {
-        summaryDiv.innerHTML = summary.summary.map(s => `
-          <div class="metric-box">
-            <h4>${s.type}</h4>
-            <div class="value" style="color: ${s.total_amount >= 0 ? 'green' : 'red'}; font-size: 1.5em;">
-              $${s.total_amount.toLocaleString()}
-            </div>
-            <p style="margin-top: 10px; color: #6c757d;">${s.count} transactions</p>
-          </div>
-        `).join('');
-      } else {
-        summaryDiv.innerHTML = '<p>No non-trade transaction types found</p>';
-      }
-      
-      // Load transactions
-      const transRes = await fetch(`${API_BASE}/nontrade/all`);
-      const trans = await transRes.json();
-      
-      const tbody = document.getElementById('nonTradeTableBody');
-      if (trans.total === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No non-trade transactions found</td></tr>';
-      } else {
-        tbody.innerHTML = trans.transactions.map(t => `
-          <tr>
-            <td>${t.date || 'N/A'}</td>
-            <td>${t.Instrument || ''}</td>
-            <td>${t.Description || ''}</td>
-            <td><span style="background: #e3f2fd; padding: 4px 8px; border-radius: 4px;">${t['Trans Code'] || ''}</span></td>
-            <td>${t.Quantity || ''}</td>
-            <td>${t.Price || ''}</td>
-            <td style="color: ${parseFloat(String(t.Amount || '0').replace(/[^0-9.-]/g, '')) >= 0 ? 'green' : 'red'}; font-weight: bold;">
-              ${t.Amount || '$0.00'}
-            </td>
-          </tr>
-        `).join('');
-      }
-    } catch (error) {
-      console.error('Error loading non-trade data:', error);
-      document.getElementById('nonTradeTableBody').innerHTML = 
-        '<tr><td colspan="7" style="text-align:center;color:red;">Error loading data</td></tr>';
-    }
-  }
-
-  // Initialize on load
   document.addEventListener('DOMContentLoaded', () => {
-    loadOverview();
-    loadSymbolsForComparison();
+    // Don't auto-load, wait for CSV upload
+    document.getElementById('holdingsTable').innerHTML = '<div class="loading">📂 Please upload your portfolio CSV file to view your holdings.</div>';
+  });
+  
+  // Clear data on page unload for privacy
+  window.addEventListener('beforeunload', () => {
+    csvData = [];
+    dividendData = {};
+    uploadedCSVContent = null;
+    portfolioData = null;
   });
 </script>
 

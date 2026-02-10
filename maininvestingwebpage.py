@@ -1,19 +1,61 @@
 import logging
-import yfinance as yf
 import pandas as pd
 import os
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 import re
 import traceback
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
+try:
+    from alpha_vantage.timeseries import TimeSeries
+    ALPHA_VANTAGE_AVAILABLE = True
+except ImportError:
+    ALPHA_VANTAGE_AVAILABLE = False
 
 # ---------------- APP SETUP ----------------
 app = FastAPI(title="Portfolio Tracker API")
 logger = logging.getLogger("portfolio_app")
 logging.basicConfig(level=logging.INFO)
+
+# Thread pool for concurrent API calls
+executor = ThreadPoolExecutor(max_workers=10)
+
+# Simple in-memory cache with timestamp
+price_cache = {}
+sector_cache = {}
+CACHE_TTL = 300  # 5 minutes
+info_cache = {}
+CACHE_TIMEOUT = timedelta(minutes=5)  # Cache for 5 minutes
+
+# Alpha Vantage API key (get free key at https://www.alphavantage.co/support/#api-key)
+ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY", "demo")  # Use 'demo' for testing
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"  # Enable demo data
+
+# Demo prices for when APIs are down
+DEMO_PRICES = {
+    "AAPL": 245.50, "AMC": 7.25, "AMZN": 195.30, "BAC": 41.75, "BACHY": 52.30,
+    "BND": 68.45, "BRK.B": 465.20, "CRWV": 15.80, "DIA": 425.60, "F": 11.95,
+    "GFL": 42.10, "HOOD": 28.45, "JNJ": 156.80, "MSFT": 425.75, "NFLX": 785.90,
+    "NVDA": 925.60, "SPY": 520.40, "T": 18.65, "TM": 215.30, "VOO": 485.20,
+    "XOM": 115.40, "YUMC": 46.85
+}
+
+# Demo sectors for when APIs are down
+DEMO_SECTORS = {
+    "AAPL": "Technology", "AMC": "Entertainment", "AMZN": "Consumer Cyclical", 
+    "BAC": "Financial Services", "BACHY": "Industrials", "BND": "Fixed Income",
+    "BRK.B": "Financial Services", "CRWV": "Industrials", "DIA": "Index Fund",
+    "F": "Consumer Cyclical", "GFL": "Industrials", "HOOD": "Financial Services",
+    "JNJ": "Healthcare", "MSFT": "Technology", "NFLX": "Communication Services",
+    "NVDA": "Technology", "SPY": "Index Fund", "T": "Communication Services",
+    "TM": "Consumer Cyclical", "VOO": "Index Fund", "XOM": "Energy", "YUMC": "Consumer Cyclical"
+}
 
 # Add global exception handler
 @app.exception_handler(Exception)
@@ -42,6 +84,92 @@ if os.getenv("RENDER") or os.getenv("VERCEL"):
     ACTIVE_PORTFOLIO_FILE = "/tmp/portfolio_data.csv"
 else:
     ACTIVE_PORTFOLIO_FILE = "portfolio_data.csv"
+
+# ---------------- CACHING & PARALLEL FETCH ----------------
+def get_cached_price(symbol: str):
+    """Get cached price or fetch from Alpha Vantage with demo fallback"""
+    now = datetime.now()
+    if symbol in price_cache:
+        price, timestamp = price_cache[symbol]
+        if now - timestamp < CACHE_TIMEOUT:
+            return price
+    
+    if ALPHA_VANTAGE_AVAILABLE and ALPHA_VANTAGE_KEY != "demo":
+        try:
+            ts = TimeSeries(key=ALPHA_VANTAGE_KEY, output_format='pandas')
+            data, meta = ts.get_quote_endpoint(symbol=symbol)
+            if not data.empty and '05. price' in data.columns:
+                price = float(data['05. price'].iloc[0])
+                price_cache[symbol] = (price, now)
+                logger.info(f"Fetched price for {symbol} from Alpha Vantage: ${price}")
+                return price
+        except Exception as e:
+            logger.error(f"Alpha Vantage failed for {symbol}: {e}")
+    
+    # Last resort: Use demo prices if available
+    if symbol in DEMO_PRICES:
+        logger.warning(f"Using DEMO price for {symbol}: ${DEMO_PRICES[symbol]}")
+        return DEMO_PRICES[symbol]
+    
+    logger.error(f"All data sources failed for {symbol}")
+    return None
+
+def get_cached_info(symbol: str):
+    """Get sector info from demo data"""
+    now = datetime.now()
+    if symbol in info_cache:
+        info, timestamp = info_cache[symbol]
+        if now - timestamp < CACHE_TIMEOUT:
+            return info
+    
+    if symbol in DEMO_SECTORS:
+        demo_info = {"sector": DEMO_SECTORS[symbol]}
+        logger.warning(f"Using DEMO sector for {symbol}: {DEMO_SECTORS[symbol]}")
+        return demo_info
+    
+    return {}
+
+async def fetch_stock_data(symbol: str, shares: float, avg_cost: float):
+    """Fetch stock price and sector data with timeout"""
+    loop = asyncio.get_event_loop()
+    
+    try:
+        # Run both price and info fetch concurrently with timeout
+        price, info = await asyncio.wait_for(
+            asyncio.gather(
+                loop.run_in_executor(executor, get_cached_price, symbol),
+                loop.run_in_executor(executor, get_cached_info, symbol),
+                return_exceptions=True
+            ),
+            timeout=5.0  # 5 second timeout per stock
+        )
+        
+        if isinstance(price, Exception) or price is None:
+            logger.error(f"Failed to get price for {symbol}")
+            return None
+        if isinstance(info, Exception):
+            info = {}
+        
+        sector = info.get("sector", "Unknown") if info else "Unknown"
+        equity = shares * price
+        pnl = (price - avg_cost) * shares
+        cost_basis = shares * avg_cost
+        
+        return {
+            "symbol": symbol,
+            "shares": float(shares),
+            "avg_cost": float(avg_cost),
+            "current_price": float(price),
+            "equity": float(equity),
+            "pnl": float(pnl),
+            "roi": float((price - avg_cost) / avg_cost * 100),
+            "sector": sector,
+            "allocation": 0,
+            "cost_basis": cost_basis
+        }
+    except Exception as e:
+        logger.error(f"Error fetching data for {symbol}: {e}")
+        return None
 
 # ---------------- HEALTH CHECK ----------------
 @app.get("/health")
@@ -177,219 +305,105 @@ def get_current_holdings() -> pd.DataFrame:
     
     return pd.DataFrame(holdings)
 
-# ---------------- CSV UPLOAD ----------------
-@app.post("/upload")
-async def upload_csv(file: UploadFile = File(...)):
-    global ACTIVE_PORTFOLIO_FILE
+# CSV file should be placed at: portfolio_data.csv
+# No upload UI needed - just place your CSV file in the root directory
 
-    os.makedirs("uploads", exist_ok=True)
-    path = f"uploads/{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{file.filename}"
+# ---------------- SERVE HTML ----------------
+@app.get("/")
+def serve_html():
+    # Check if CSV exists
+    if not os.path.exists(ACTIVE_PORTFOLIO_FILE):
+        return HTMLResponse(f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Portfolio Analytics - CSV Required</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }}
+                .container {{
+                    background: white;
+                    padding: 40px;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    text-align: center;
+                    max-width: 600px;
+                }}
+                h1 {{ color: #333; margin-bottom: 20px; }}
+                p {{ color: #666; line-height: 1.8; margin-bottom: 20px; }}
+                code {{
+                    background: #f5f5f5;
+                    padding: 15px;
+                    border-radius: 5px;
+                    display: block;
+                    margin: 20px 0;
+                    font-size: 14px;
+                    color: #e83e8c;
+                }}
+                .refresh {{
+                    display: inline-block;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 12px 30px;
+                    border-radius: 5px;
+                    text-decoration: none;
+                    font-weight: bold;
+                    margin-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>📊 Portfolio Analytics</h1>
+                <p><strong>CSV file not found!</strong></p>
+                <p>Please place your portfolio CSV file in the following location:</p>
+                <code>{ACTIVE_PORTFOLIO_FILE}</code>
+                <p>The CSV should contain columns: Settle Date, Instrument, Trans Code, Shares, Share_Price</p>
+                <a href="/" class="refresh" onclick="location.reload(); return false;">🔄 Refresh Page</a>
+            </div>
+        </body>
+        </html>
+        """)
+    return FileResponse("index.html")
 
-    content = await file.read()
-    with open(path, "wb") as f:
-        f.write(content)
+@app.get("/portfolio_data.csv")
+def serve_csv():
+    """Serve the portfolio CSV file for frontend parsing"""
+    if not os.path.exists(ACTIVE_PORTFOLIO_FILE):
+        raise HTTPException(status_code=404, detail="Portfolio CSV not found")
+    return FileResponse(ACTIVE_PORTFOLIO_FILE, media_type="text/csv", filename="portfolio_data.csv")
 
-    ACTIVE_PORTFOLIO_FILE = path
-    df = parse_brokerage_csv(path)
-
-    return {
-        "message": "CSV uploaded successfully",
-        "active_file": path,
-        "rows_loaded": len(df),
-        "symbols": df["symbol"].unique().tolist()
-    }
-
-# ---------------- CSV UPLOAD ----------------
-@app.get("/upload", response_class=HTMLResponse)
-def upload_page():
-    """Serve upload page"""
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <title>Upload Portfolio Data</title>
-        <style>
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                margin: 0;
-                padding: 10px;
-            }
-            .upload-container {
-                background: white;
-                padding: 20px;
-                border-radius: 15px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                max-width: 500px;
-                width: 100%;
-            }
-            @media (min-width: 768px) {
-                .upload-container { padding: 40px; }
-            }
-            h1 {
-                color: #667eea;
-                margin-bottom: 20px;
-                font-size: 1.5em;
-            }
-            @media (min-width: 768px) {
-                h1 { margin-bottom: 30px; font-size: 2em; }
-            }
-            input[type="password"], input[type="file"] {
-                width: 100%;
-                padding: 12px;
-                margin: 10px 0;
-                border: 2px solid #e9ecef;
-                border-radius: 8px;
-                font-size: 16px;
-                box-sizing: border-box;
-                -webkit-appearance: none;
-            }
-            button {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                border: none;
-                padding: 15px 30px;
-                border-radius: 8px;
-                touch-action: manipulation;
-                -webkit-tap-highlight-color: transparent;
-                font-size: 16px;
-                font-weight: 600;
-                cursor: pointer;
-                width: 100%;
-                margin-top: 20px;
-            }
-            button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
-            }
-            .message {
-                padding: 15px;
-                margin-top: 20px;
-                border-radius: 8px;
-                display: none;
-            }
-            .success {
-                background: #d4edda;
-                color: #155724;
-                border: 1px solid #c3e6cb;
-            }
-            .error {
-                background: #f8d7da;
-                color: #721c24;
-                border: 1px solid #f5c6cb;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="upload-container">
-            <h1>📊 Upload Portfolio CSV</h1>
-            <form id="uploadForm">
-                <label for="file">CSV File:</label>
-                <input type="file" id="file" name="file" accept=".csv" required>
-                
-                <button type="submit">Upload</button>
-            </form>
-            <div id="message" class="message"></div>
-        </div>
-        
-        <script>
-            document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                const formData = new FormData();
-                formData.append('file', document.getElementById('file').files[0]);
-                
-                const messageDiv = document.getElementById('message');
-                messageDiv.style.display = 'none';
-                
-                try {
-                    const response = await fetch('/upload', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    let data;
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('application/json')) {
-                        data = await response.json();
-                    } else {
-                        const text = await response.text();
-                        data = { detail: text || 'Upload failed' };
-                    }
-                    
-                    if (response.ok) {
-                        messageDiv.className = 'message success';
-                        messageDiv.textContent = data.message || 'Upload successful!';
-                        messageDiv.style.display = 'block';
-                        document.getElementById('uploadForm').reset();
-                        setTimeout(() => {
-                            window.location.href = '/';
-                        }, 1500);
-                    } else {
-                        messageDiv.className = 'message error';
-                        messageDiv.textContent = data.detail || 'Upload failed';
-                        messageDiv.style.display = 'block';
-                    }
-                } catch (error) {
-                    messageDiv.className = 'message error';
-                    messageDiv.textContent = 'Upload failed: ' + error.message;
-                    messageDiv.style.display = 'block';
-                }
-            });
-        </script>
-    </body>
-    </html>
-    """
-
-@app.post("/upload")
-async def upload_csv(file: UploadFile = File(...)):
-    """Upload portfolio CSV"""
+# ---------------- TEMPORARY CSV UPLOAD (NOT SAVED) ----------------
+@app.post("/upload/temp")
+async def upload_temp_csv(file: UploadFile = File(...)):
+    """Process uploaded CSV temporarily without saving - privacy-focused"""
     try:
-        logger.info(f"Starting upload for file: {file.filename}")
+        # Read CSV content into memory only
+        contents = await file.read()
+        csv_text = contents.decode('utf-8')
         
-        # Validate file type
-        if not file.filename.endswith('.csv'):
-            logger.warning(f"Invalid file type: {file.filename}")
-            raise HTTPException(status_code=400, detail="Only CSV files are allowed")
+        # Parse CSV with pandas
+        from io import StringIO
+        df = pd.read_csv(StringIO(csv_text))
         
-        # Ensure directory exists (for /tmp on cloud platforms)
-        os.makedirs(os.path.dirname(ACTIVE_PORTFOLIO_FILE) if os.path.dirname(ACTIVE_PORTFOLIO_FILE) else ".", exist_ok=True)
-        
-        # Save the uploaded file
-        logger.info(f"Reading file content...")
-        content = await file.read()
-        logger.info(f"File size: {len(content)} bytes")
-        
-        logger.info(f"Writing to: {ACTIVE_PORTFOLIO_FILE}")
-        with open(ACTIVE_PORTFOLIO_FILE, 'wb') as f:
-            f.write(content)
-        logger.info(f"File written successfully")
-        
-        # Verify it can be parsed
-        logger.info("Parsing CSV...")
-        test_parse = parse_brokerage_csv(ACTIVE_PORTFOLIO_FILE)
-        logger.info(f"Parsed {len(test_parse)} rows")
-        
-        if test_parse.empty:
-            raise HTTPException(status_code=400, detail="CSV file appears to be empty or invalid")
-        
+        # Store in session/memory temporarily (never written to disk)
+        # Return analytics immediately
         return {
-            "message": f"Successfully uploaded {file.filename}. Found {len(test_parse)} transactions.",
-            "transactions": len(test_parse),
-            "symbols": len(test_parse['symbol'].unique()) if 'symbol' in test_parse.columns else 0
+            "status": "success",
+            "message": "CSV processed in memory only - not saved",
+            "rows": len(df),
+            "columns": list(df.columns)
         }
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Upload error: {type(e).__name__}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error: {type(e).__name__}: {str(e)}")
+        logger.error(f"Error processing uploaded CSV: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid CSV file: {str(e)}")
 
 # ---------------- GET ALL SYMBOLS ----------------
 @app.get("/symbols")
@@ -400,72 +414,7 @@ def get_symbols():
     symbols = sorted(portfolio["symbol"].unique().tolist())
     return {"symbols": symbols}
 
-# ---------------- SERVE HTML ----------------
-@app.get("/")
-def serve_html():
-    # Check if CSV exists, otherwise show upload page
-    if not os.path.exists(ACTIVE_PORTFOLIO_FILE):
-        return HTMLResponse("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Portfolio Analytics - Upload Required</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
-                    margin: 0;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                }
-                .container {
-                    background: white;
-                    padding: 40px;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                    text-align: center;
-                    max-width: 500px;
-                }
-                h1 { color: #333; margin-bottom: 20px; }
-                p { color: #666; line-height: 1.6; margin-bottom: 30px; }
-                a {
-                    display: inline-block;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 12px 30px;
-                    border-radius: 5px;
-                    text-decoration: none;
-                    font-weight: bold;
-                    transition: transform 0.2s;
-                }
-                a:hover { transform: translateY(-2px); }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>📊 Portfolio Analytics</h1>
-                <p>Welcome! No portfolio data has been uploaded yet. Please upload your CSV file to get started with your portfolio analysis.</p>
-                <a href="/upload">Upload Portfolio CSV</a>
-            </div>
-        </body>
-        </html>
-        """)
-    return FileResponse("index.html")
 
-# ---------------- MARKET DATA ----------------
-@app.get("/market/{symbol}")
-def market_data(symbol: str):
-    symbol = symbol.strip().upper()
-    try:
-        stock = yf.Ticker(symbol)
-        hist = stock.history(period="5y")
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    if hist.empty:
-        raise HTTPException(status_code=404, detail="No market data returned")
-    return hist.reset_index().to_dict(orient="records")
 
 # ---------------- PORTFOLIO SUMMARY ----------------
 @app.get("/portfolio/{symbol}")
@@ -481,12 +430,11 @@ def portfolio_data(symbol: str):
         return {"error": "symbol has zero shares"}
 
     avg_cost = (trades["shares"] * trades["price"]).sum() / total_shares
-    stock = yf.Ticker(symbol)
-    price_series = stock.history(period="1d")["Close"]
-    if price_series.empty:
+    
+    # Get current price using our caching system
+    price = get_cached_price(symbol)
+    if price is None:
         raise HTTPException(status_code=503, detail="Price lookup failed")
-
-    price = float(price_series.iloc[-1])
     equity = total_shares * price
     pnl = (price - avg_cost) * total_shares
     roi = (price - avg_cost) / avg_cost * 100
@@ -501,122 +449,44 @@ def portfolio_data(symbol: str):
         "roi_percent": round(roi, 2)
     }
 
-# ---------------- TIMELINE CHART ENGINE ----------------
-@app.get("/portfolio_timeseries/{symbol}")
-def portfolio_timeseries(
-    symbol: str,
-    range: str = Query("1y", enum=["1d", "1w", "1m", "3m", "1y", "5y"])
-):
-    portfolio = load_and_sanitize_portfolio()
-    symbol = symbol.strip().upper()
-    trades = portfolio[portfolio["symbol"] == symbol]
-    if trades.empty:
-        return {"error": "symbol not found in portfolio"}
-
-    total_shares = trades["shares"].sum()
-    if total_shares == 0:
-        return {"error": "symbol has zero shares"}
-
-    avg_cost = (trades["shares"] * trades["price"]).sum() / total_shares
-    period_map = {
-        "1d": "1d",
-        "1w": "7d",
-        "1m": "1mo",
-        "3m": "3mo",
-        "1y": "1y",
-        "5y": "5y"
-    }
-
-    stock = yf.Ticker(symbol)
-    hist = stock.history(period=period_map[range])
-    if hist.empty:
-        raise HTTPException(status_code=503, detail="No historical data")
-
-    hist = hist.reset_index()
-    hist["equity"] = hist["Close"] * total_shares
-    hist["pnl"] = (hist["Close"] - avg_cost) * total_shares
-
-    return hist[["Date", "Close", "equity", "pnl"]].to_dict(orient="records")
-
-# ---------------- TOTAL PORTFOLIO ----------------
+# ---------------- PORTFOLIO ANALYTICS ----------------
 @app.get("/portfolio_total")
 def portfolio_total(range: str = "1y"):
     portfolio = load_and_sanitize_portfolio()
     if portfolio.empty:
         return []
 
-    symbols = portfolio["symbol"].unique()
-    combined = None
-
-    for sym in symbols:
-        shares = portfolio[portfolio["symbol"] == sym]["shares"].sum()
-        if shares == 0:
-            continue
-
-        stock = yf.Ticker(sym)
-        hist = stock.history(period=range)
-        if hist.empty:
-            continue
-
-        hist["value"] = hist["Close"] * shares
-        if combined is None:
-            combined = hist["value"]
-        else:
-            combined += hist["value"]
-
-    if combined is None:
-        return []
-
-    combined = combined.reset_index()
-    return combined.to_dict(orient="records")
+    # Total portfolio historical data disabled - Yahoo Finance removed
+    return {"error": "Historical portfolio data temporarily unavailable. Please use current portfolio overview endpoint."}
 
 # ---------------- PORTFOLIO ANALYTICS ----------------
 @app.get("/analytics/overview")
-def portfolio_overview():
+async def portfolio_overview():
     """Get complete portfolio analytics including total value, P&L, allocation"""
     holdings = get_current_holdings()
     if holdings.empty:
         return {"error": "No portfolio data"}
     
-    holdings_list = []
-    total_equity = 0
-    total_cost = 0
+    # Fetch all stock data in parallel
+    tasks = [
+        fetch_stock_data(row['symbol'], row['total_shares'], row['avg_cost'])
+        for _, row in holdings.iterrows()
+    ]
     
-    for _, row in holdings.iterrows():
-        symbol = row['symbol']
-        shares = row['total_shares']
-        avg_cost = row['avg_cost']
-        
-        try:
-            stock = yf.Ticker(symbol)
-            price = stock.history(period="1d")["Close"].iloc[-1]
-            info = stock.info
-            sector = info.get("sector", "Unknown")
-            
-            equity = shares * price
-            pnl = (price - avg_cost) * shares
-            cost_basis = shares * avg_cost
-            
-            total_equity += equity
-            total_cost += cost_basis
-            
-            holdings_list.append({
-                "symbol": symbol,
-                "shares": float(shares),
-                "avg_cost": float(avg_cost),
-                "current_price": float(price),
-                "equity": float(equity),
-                "pnl": float(pnl),
-                "roi": float((price - avg_cost) / avg_cost * 100),
-                "sector": sector,
-                "allocation": 0  # Will calculate after we have total
-            })
-        except:
-            continue
+    results = await asyncio.gather(*tasks)
+    holdings_list = [r for r in results if r is not None]
+    
+    if not holdings_list:
+        return {"error": "Could not fetch stock data"}
+    
+    # Calculate totals
+    total_equity = sum(h["equity"] for h in holdings_list)
+    total_cost = sum(h["cost_basis"] for h in holdings_list)
     
     # Calculate allocations
     for holding in holdings_list:
         holding["allocation"] = (holding["equity"] / total_equity * 100) if total_equity > 0 else 0
+        del holding["cost_basis"]  # Remove temporary field
     
     # Sort by equity descending
     holdings_list.sort(key=lambda x: x["equity"], reverse=True)
@@ -633,29 +503,30 @@ def portfolio_overview():
     }
 
 @app.get("/analytics/sectors")
-def sector_allocation():
+async def sector_allocation():
     """Get portfolio allocation by sector"""
     holdings = get_current_holdings()
     if holdings.empty:
         return {"sectors": []}
     
-    sector_data = {}
+    # Fetch all stock data in parallel
+    tasks = [
+        fetch_stock_data(row['symbol'], row['total_shares'], row['avg_cost'])
+        for _, row in holdings.iterrows()
+    ]
     
-    for _, row in holdings.iterrows():
-        try:
-            stock = yf.Ticker(row['symbol'])
-            price = stock.history(period="1d")["Close"].iloc[-1]
-            info = stock.info
-            sector = info.get("sector", "Unknown")
-            
-            equity = row['total_shares'] * price
-            
-            if sector in sector_data:
-                sector_data[sector] += equity
-            else:
-                sector_data[sector] = equity
-        except:
-            continue
+    results = await asyncio.gather(*tasks)
+    holdings_list = [r for r in results if r is not None]
+    
+    # Aggregate by sector
+    sector_data = {}
+    for holding in holdings_list:
+        sector = holding["sector"]
+        equity = holding["equity"]
+        if sector in sector_data:
+            sector_data[sector] += equity
+        else:
+            sector_data[sector] = equity
     
     total = sum(sector_data.values())
     sectors = [
@@ -670,94 +541,34 @@ def sector_allocation():
     sectors.sort(key=lambda x: x["value"], reverse=True)
     return {"sectors": sectors}
 
-@app.get("/analytics/performance")
-def performance_metrics():
-    """Calculate risk metrics and performance vs S&P 500"""
-    holdings = get_current_holdings()
-    if holdings.empty:
-        return {"error": "No portfolio data"}
-    
-    # Get portfolio historical values
-    portfolio_hist = None
-    
-    for _, row in holdings.iterrows():
-        try:
-            stock = yf.Ticker(row['symbol'])
-            hist = stock.history(period="1y")["Close"]
-            if portfolio_hist is None:
-                portfolio_hist = hist * row['total_shares']
-            else:
-                portfolio_hist = portfolio_hist.add(hist * row['total_shares'], fill_value=0)
-        except:
-            continue
-    
-    if portfolio_hist is None or portfolio_hist.empty:
-        return {"error": "Could not calculate performance"}
-    
-    # Get S&P 500 data
-    try:
-        spy = yf.Ticker("SPY")
-        spy_hist = spy.history(period="1y")["Close"]
-        spy_returns = spy_hist.pct_change().dropna()
-    except:
-        spy_returns = None
-    
-    # Calculate returns
-    portfolio_returns = portfolio_hist.pct_change().dropna()
-    
-    # Calculate metrics
-    annual_return = (portfolio_hist.iloc[-1] / portfolio_hist.iloc[0] - 1) * 100
-    volatility = portfolio_returns.std() * (252 ** 0.5) * 100  # Annualized
-    sharpe_ratio = (portfolio_returns.mean() / portfolio_returns.std() * (252 ** 0.5)) if portfolio_returns.std() > 0 else 0
-    
-    result = {
-        "annual_return": round(annual_return, 2),
-        "volatility": round(volatility, 2),
-        "sharpe_ratio": round(sharpe_ratio, 2),
-        "total_days": len(portfolio_returns)
-    }
-    
-    if spy_returns is not None:
-        spy_annual = (spy_hist.iloc[-1] / spy_hist.iloc[0] - 1) * 100
-        result["spy_return"] = round(spy_annual, 2)
-        result["outperformance"] = round(annual_return - spy_annual, 2)
-        
-        # Calculate beta
-        aligned_returns = pd.DataFrame({"portfolio": portfolio_returns, "spy": spy_returns}).dropna()
-        if len(aligned_returns) > 0:
-            covariance = aligned_returns["portfolio"].cov(aligned_returns["spy"])
-            spy_variance = aligned_returns["spy"].var()
-            beta = covariance / spy_variance if spy_variance > 0 else 1
-            result["beta"] = round(beta, 2)
-    
-    return result
+
 
 @app.get("/analytics/best_worst")
-def best_worst_performers():
+async def best_worst_performers():
     """Get best and worst performing stocks"""
     holdings = get_current_holdings()
     if holdings.empty:
         return {"best": [], "worst": []}
     
-    performers = []
+    # Fetch all stock data in parallel
+    tasks = [
+        fetch_stock_data(row['symbol'], row['total_shares'], row['avg_cost'])
+        for _, row in holdings.iterrows()
+    ]
     
-    for _, row in holdings.iterrows():
-        try:
-            stock = yf.Ticker(row['symbol'])
-            price = stock.history(period="1d")["Close"].iloc[-1]
-            
-            roi = (price - row['avg_cost']) / row['avg_cost'] * 100
-            pnl = (price - row['avg_cost']) * row['total_shares']
-            
-            performers.append({
-                "symbol": row['symbol'],
-                "roi": round(roi, 2),
-                "pnl": round(pnl, 2),
-                "current_price": round(price, 2),
-                "avg_cost": round(row['avg_cost'], 2)
-            })
-        except:
-            continue
+    results = await asyncio.gather(*tasks)
+    holdings_list = [r for r in results if r is not None]
+    
+    performers = [
+        {
+            "symbol": h["symbol"],
+            "roi": round(h["roi"], 2),
+            "pnl": round(h["pnl"], 2),
+            "current_price": round(h["current_price"], 2),
+            "avg_cost": round(h["avg_cost"], 2)
+        }
+        for h in holdings_list
+    ]
     
     performers.sort(key=lambda x: x["roi"], reverse=True)
     
@@ -766,96 +577,16 @@ def best_worst_performers():
         "worst": performers[-5:][::-1]
     }
 
-# ---------------- DATE RANGE ANALYSIS ----------------
-@app.get("/analytics/date_range")
-def date_range_analysis(
-    symbol: str,
-    start_date: str = Query(..., description="Start date in YYYY-MM-DD format"),
-    end_date: str = Query(..., description="End date in YYYY-MM-DD format")
-):
-    """Get portfolio performance for a specific date range"""
-    portfolio = load_and_sanitize_portfolio()
-    symbol = symbol.strip().upper()
-    trades = portfolio[portfolio["symbol"] == symbol]
-    
-    if trades.empty:
-        return {"error": "Symbol not found"}
-    
-    shares = trades["shares"].sum()
-    avg_cost = (trades["shares"] * trades["price"]).sum() / shares
-    
-    try:
-        stock = yf.Ticker(symbol)
-        hist = stock.history(start=start_date, end=end_date)
-        
-        hist["equity"] = hist["Close"] * shares
-        hist["pnl"] = (hist["Close"] - avg_cost) * shares
-        
-        return {
-            "symbol": symbol,
-            "start_date": start_date,
-            "end_date": end_date,
-            "data": hist.reset_index()[["Date", "Close", "equity", "pnl"]].to_dict(orient="records")
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/analytics/monthly_breakdown")
-def monthly_breakdown(year: int = Query(2025)):
-    """Get monthly P&L breakdown for a given year"""
-    holdings = get_current_holdings()
-    if holdings.empty:
-        return {"months": []}
-    
-    monthly_data = []
-    current_date = datetime.now()
-    
-    for month in range(1, 13):
-        # Skip future months
-        if year == current_date.year and month > current_date.month:
-            continue
-            
-        start_date = f"{year}-{month:02d}-01"
-        if month == 12:
-            end_date = f"{year+1}-01-01"
-        else:
-            end_date = f"{year}-{month+1:02d}-01"
-        
-        month_pnl = 0
-        month_value = 0
-        has_data = False
-        
-        for _, row in holdings.iterrows():
-            try:
-                stock = yf.Ticker(row['symbol'])
-                hist = stock.history(start=start_date, end=end_date)
-                if not hist.empty:
-                    price = hist["Close"].iloc[-1]
-                    month_value += price * row['total_shares']
-                    month_pnl += (price - row['avg_cost']) * row['total_shares']
-                    has_data = True
-            except:
-                continue
-        
-        # Only add months that have actual data
-        if has_data:
-            monthly_data.append({
-                "month": month,
-                "month_name": pd.Timestamp(year=year, month=month, day=1).strftime("%B"),
-                "value": round(month_value, 2),
-                "pnl": round(month_pnl, 2)
-            })
-    
-    return {"year": year, "months": monthly_data}
 
 # ---------------- EXPORT & REPORTING ----------------
 @app.get("/export/csv")
-def export_csv():
+async def export_csv():
     """Export current portfolio as CSV"""
     from fastapi.responses import StreamingResponse
     import io
     
-    overview = portfolio_overview()
+    overview = await portfolio_overview()
     if "error" in overview:
         raise HTTPException(status_code=404, detail=overview["error"])
     
@@ -878,17 +609,15 @@ def export_csv():
     )
 
 @app.get("/export/summary")
-def export_summary():
+async def export_summary():
     """Get comprehensive portfolio summary for reporting"""
-    overview = portfolio_overview()
-    sectors = sector_allocation()
-    performance = performance_metrics()
-    best_worst = best_worst_performers()
+    overview = await portfolio_overview()
+    sectors = await sector_allocation()
+    best_worst = await best_worst_performers()
     
     return {
         "overview": overview,
         "sectors": sectors,
-        "performance": performance,
         "top_performers": best_worst["best"],
         "worst_performers": best_worst["worst"],
         "generated_at": datetime.utcnow().isoformat()
@@ -1071,6 +800,61 @@ def lending_summary():
         "total_income": round(total_income, 2),
         "transaction_count": len(lending),
         "symbols_lent": lending['Instrument'].nunique() if 'Instrument' in lending.columns else 0
+    }
+
+@app.get("/dividends/summary")
+def get_dividends_summary():
+    """Get dividend summary by symbol"""
+    all_trans = get_all_transactions(ACTIVE_PORTFOLIO_FILE)
+    if all_trans.empty:
+        return {"dividends": [], "total_dividends": 0}
+    
+    # Filter for dividend transactions (check Description field)
+    dividends = all_trans[all_trans['Description'].str.contains('dividend', case=False, na=False)].copy()
+    
+    if dividends.empty:
+        return {"dividends": [], "total_dividends": 0}
+    
+    # Group by symbol and calculate total dividends
+    dividend_summary = []
+    total_all = 0
+    
+    for symbol in dividends['Instrument'].unique():
+        if pd.isna(symbol):
+            continue
+        
+        symbol_divs = dividends[dividends['Instrument'] == symbol]
+        
+        # Calculate total dividend amount
+        total = 0
+        transactions = []
+        for _, row in symbol_divs.iterrows():
+            try:
+                amt_str = str(row['Amount']).replace('$', '').replace(',', '').replace('(', '').replace(')', '')
+                amt = abs(float(amt_str))  # Use absolute value since dividends are shown as negative
+                total += amt
+                transactions.append({
+                    "date": row['date'].isoformat() if pd.notna(row.get('date')) else row['Settle Date'],
+                    "amount": round(amt, 2)
+                })
+            except:
+                continue
+        
+        if total > 0:
+            dividend_summary.append({
+                "symbol": symbol,
+                "total_dividends": round(total, 2),
+                "count": len(transactions),
+                "transactions": transactions
+            })
+            total_all += total
+    
+    # Sort by total dividends descending
+    dividend_summary.sort(key=lambda x: x['total_dividends'], reverse=True)
+    
+    return {
+        "dividends": dividend_summary,
+        "total_dividends": round(total_all, 2)
     }
 
 # Vercel serverless handler - must be named 'handler' or 'app'
